@@ -3,14 +3,64 @@
 @tailwind utilities;
 
 @layer base {
-  ::selection {
-    background-color: #3ecf8e33;
-    color: #edede6;
+  :focus-visible {
+    outline: 2px solid #566cbd;
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-baloo), sans-serif;
+  }
+}
+
+@layer components {
+  button,
+  .pill {
+    transition:
+      background-color 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+      color 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  button:active {
+    transform: scale(0.96);
   }
 }
 
 @layer utilities {
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+  /* Staggered fade-up entrance, same timing as the original app's .content > * */
+  .stagger > * {
+    animation: fadeSlideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .stagger > *:nth-child(1) {
+    animation-delay: 0.02s;
+  }
+  .stagger > *:nth-child(2) {
+    animation-delay: 0.06s;
+  }
+  .stagger > *:nth-child(3) {
+    animation-delay: 0.1s;
+  }
+  .stagger > *:nth-child(4) {
+    animation-delay: 0.14s;
+  }
+  .stagger > *:nth-child(5) {
+    animation-delay: 0.18s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }
