@@ -1,40 +1,49 @@
-# Roasify (Next.js + Supabase)
+# Roasify (Next.js, local session auth)
 
-Login/signup with Google OAuth or passwordless email OTP, plus a dashboard shell
-for connecting Shopify, Meta Ads, and Google Ads.
+Passwordless login (email + one-time code) with a signed cookie session — no
+external auth provider required yet — plus a dashboard shell for connecting
+Shopify, Meta Ads, and Google Ads.
+
+**Current auth is a local dev stand-in, not production-ready as-is:**
+the OTP code is generated and stored in an in-memory `Map` (`lib/otpStore.js`)
+that resets on every server restart and won't work across multiple server
+instances, and there's no real email sender wired up — the code is logged to
+the server console and, outside production, returned directly in the API
+response so the login screen can show it in a "dev mode" banner. Swap in a
+real email provider (Resend, Postmark, etc.) and a shared store (Redis,
+Postgres) before this goes live with real users. Google sign-in is present
+in the UI but disabled — it needs a registered OAuth app and either
+Supabase Auth or a library like Auth.js before it does anything.
 
 ## What's here
 
-- `app/login` — the auth screen. "Continue with Google" or email + 6-digit code.
-  There's no separate signup form: both paths create an account automatically
-  the first time, which is standard for passwordless auth.
-- `app/auth/callback` — where Google sends the user back after consent.
-- `middleware.js` — refreshes the session on every request and redirects
-  signed-out users away from `/dashboard`.
+- `app/login` — the auth screen. Email + 6-digit code, no password. There's
+  no separate signup form: entering a new email and verifying the code
+  creates the session the same way, which is standard for passwordless auth.
+- `lib/session.js` — signs and verifies the session cookie with Web Crypto
+  (works in both middleware's Edge runtime and normal route handlers).
+- `lib/otpStore.js` — the in-memory OTP store described above.
+- `app/api/auth/otp`, `.../otp/verify`, `.../logout` — the three auth routes.
+- `middleware.js` — reads the session cookie on every request and redirects
+  signed-out users away from `/dashboard`, and signed-in users away from `/login`.
 - `app/dashboard` — sidebar shell, overview (empty state until data exists),
   and `/dashboard/connections` with a card per platform.
 - `app/api/connect/[platform]` — stub OAuth-start routes for Shopify, Meta,
   and Google Ads. These return a 501 until you add real credentials (below).
 
-## 1. Set up Supabase
-
-1. Create a project at supabase.com.
-2. In **Authentication > Providers**, enable **Google** and paste your Google
-   OAuth client ID/secret (create one in Google Cloud Console > Credentials,
-   with `https://YOUR-PROJECT.supabase.co/auth/v1/callback` as the redirect URI).
-3. **Email OTP** is on by default — under **Authentication > Email Templates**,
-   confirm the "Magic Link" template is set to send a code, not just a link.
-4. Copy your project URL and anon key into `.env.local` (copy from
-   `.env.local.example`).
-
-## 2. Run it
+## Run it
 
 ```bash
 npm install
+cp .env.local.example .env.local
+# Add a random value for SESSION_SECRET, e.g.:
+openssl rand -base64 32
 npm run dev
 ```
 
-Visit `localhost:3000` — you'll land on `/login`.
+Visit `localhost:3000` — you'll land on `/login`. Enter any email, and the
+code will appear right in the UI (dev mode only) since no email sender is
+configured yet.
 
 ## 3. Connecting platforms (next step, not yet wired up)
 

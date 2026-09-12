@@ -2,51 +2,40 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 const OTP_LENGTH = 6;
 
 export default function AuthPanel() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [step, setStep] = useState("start"); // start | otp
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [devCode, setDevCode] = useState(null);
   const otpRefs = useRef([]);
-
-  async function handleGoogle() {
-    setError(null);
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    }
-    // On success, the browser is redirected to Google — nothing else to do here.
-  }
 
   async function handleSendOtp(e) {
     e.preventDefault();
     if (!email.trim()) return;
     setError(null);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { shouldCreateUser: true },
+
+    const res = await fetch("/api/auth/otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
     });
+    const data = await res.json();
     setLoading(false);
-    if (error) {
-      setError(error.message);
+
+    if (!res.ok) {
+      setError(data.error || "Couldn't send a code. Try again.");
       return;
     }
+
+    setDevCode(data.devCode ?? null);
     setStep("otp");
     setTimeout(() => otpRefs.current[0]?.focus(), 0);
   }
@@ -60,16 +49,19 @@ export default function AuthPanel() {
     }
     setError(null);
     setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: code,
-      type: "email",
+
+    const res = await fetch("/api/auth/otp/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), code }),
     });
     setLoading(false);
-    if (error) {
+
+    if (!res.ok) {
       setError("That code didn't work. Check it and try again.");
       return;
     }
+
     router.push("/dashboard");
     router.refresh();
   }
@@ -94,18 +86,19 @@ export default function AuthPanel() {
     <div className="w-full max-w-sm">
       <h1 className="text-2xl font-medium text-paper">Sign in to Roasify</h1>
       <p className="mt-2 text-sm text-mist">
-        No password to remember. Use Google, or a one-time code sent to your email.
+        Enter your email and we'll send a one-time code — no password to remember.
       </p>
 
       {step === "start" && (
         <div className="mt-8 space-y-4">
           <button
-            onClick={handleGoogle}
-            disabled={loading}
-            className="flex w-full items-center justify-center gap-3 rounded-md border border-line bg-ink2 py-3 text-sm font-medium text-paper transition-colors hover:border-mist disabled:opacity-50"
+            disabled
+            title="Google sign-in needs an OAuth provider configured first"
+            className="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-md border border-line bg-ink2 py-3 text-sm font-medium text-mist opacity-60"
           >
             <GoogleMark />
             Continue with Google
+            <span className="text-xs text-mist">(coming soon)</span>
           </button>
 
           <div className="flex items-center gap-3 text-xs text-mist">
@@ -132,7 +125,7 @@ export default function AuthPanel() {
               disabled={loading}
               className="w-full rounded-md bg-mint py-3 text-sm font-medium text-ink transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              Continue with email
+              {loading ? "Sending..." : "Continue with email"}
             </button>
           </form>
         </div>
@@ -146,12 +139,23 @@ export default function AuthPanel() {
             </p>
             <button
               type="button"
-              onClick={() => setStep("start")}
+              onClick={() => {
+                setStep("start");
+                setDevCode(null);
+                setOtp(Array(OTP_LENGTH).fill(""));
+              }}
               className="mt-1 text-sm text-mist underline decoration-line underline-offset-4 hover:text-paper"
             >
               Use a different email
             </button>
           </div>
+
+          {devCode && (
+            <p className="rounded-md border border-mint/30 bg-mint/10 px-4 py-3 text-sm text-mint">
+              Dev mode — no email sender configured yet. Your code is{" "}
+              <span className="font-mono">{devCode}</span>.
+            </p>
+          )}
 
           <div className="flex justify-between gap-2">
             {otp.map((digit, i) => (
@@ -174,7 +178,7 @@ export default function AuthPanel() {
             disabled={loading}
             className="w-full rounded-md bg-mint py-3 text-sm font-medium text-ink transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            Verify and continue
+            {loading ? "Verifying..." : "Verify and continue"}
           </button>
         </form>
       )}
