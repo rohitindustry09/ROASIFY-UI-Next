@@ -14,6 +14,7 @@ export default function AuthPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [devCode, setDevCode] = useState(null);
+  const [emailSent, setEmailSent] = useState(false);
   const otpRefs = useRef([]);
 
   async function handleSendOtp(e) {
@@ -36,6 +37,7 @@ export default function AuthPanel() {
     }
 
     setDevCode(data.devCode ?? null);
+    setEmailSent(Boolean(data.emailSent));
     setStep("otp");
     setTimeout(() => otpRefs.current[0]?.focus(), 0);
   }
@@ -151,8 +153,8 @@ export default function AuthPanel() {
           </div>
 
           {devCode && (
-            <p className="rounded-md border border-mint/30 bg-mint/10 px-4 py-3 text-sm text-mint">
-              Dev mode — no email sender configured yet. Your code is{" "}
+            <p className="rounded-md border border-coral/30 bg-coral/10 px-4 py-3 text-sm text-coral">
+              Couldn't send the email — using dev fallback. Your code is{" "}
               <span className="font-mono">{devCode}</span>.
             </p>
           )}

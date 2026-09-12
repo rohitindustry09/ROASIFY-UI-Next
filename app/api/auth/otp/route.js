@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { issueCode } from "@/lib/otpStore";
+import { sendOtpEmail } from "@/lib/mailer";
 
 export async function POST(request) {
   const { email } = await request.json();
@@ -10,13 +11,18 @@ export async function POST(request) {
 
   const code = issueCode(email);
 
-  // No email provider wired up yet — log it server-side and, in dev only,
-  // hand it back in the response so the UI can show it. Remove `devCode`
-  // once a real sender (Resend, Postmark, etc.) is wired in.
-  console.log(`[dev] OTP for ${email}: ${code}`);
-
-  return NextResponse.json({
-    ok: true,
-    devCode: process.env.NODE_ENV !== "production" ? code : undefined,
-  });
+  try {
+    await sendOtpEmail(email, code);
+    return NextResponse.json({ ok: true, emailSent: true });
+  } catch (err) {
+    console.error(`[otp] Failed to send email to ${email}:`, err.message);
+    console.log(`[dev] OTP for ${email}: ${code}`);
+    // Fall back to showing the code in the UI so local dev isn't blocked
+    // by a missing/broken email sender. Never do this in production.
+    return NextResponse.json({
+      ok: true,
+      emailSent: false,
+      devCode: process.env.NODE_ENV !== "production" ? code : undefined,
+    });
+  }
 }
