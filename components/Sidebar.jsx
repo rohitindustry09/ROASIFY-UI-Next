@@ -7,6 +7,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 const ITEMS = [
   { href: "/dashboard", label: "Overview", Icon: GridIcon },
   { href: "/dashboard/connections", label: "Connections", Icon: PlugIcon },
+  { href: "/dashboard/profile", label: "Profile", Icon: UserIcon },
 ];
 
 export default function Sidebar() {
@@ -15,10 +16,12 @@ export default function Sidebar() {
   const itemRefs = useRef([]);
   const [indicator, setIndicator] = useState({ top: 0, height: 0, ready: false });
 
-  const activeIdx = Math.max(
-    0,
-    ITEMS.findIndex((i) => pathname === i.href)
-  );
+  const activeIdx = (() => {
+    const exact = ITEMS.findIndex((i) => pathname === i.href);
+    if (exact !== -1) return exact;
+    const nested = ITEMS.findIndex((i) => i.href !== "/dashboard" && pathname.startsWith(i.href + "/"));
+    return nested !== -1 ? nested : 0;
+  })();
 
   useLayoutEffect(() => {
     const el = itemRefs.current[activeIdx];
@@ -97,6 +100,15 @@ function GridIcon() {
       <rect x="13" y="3" width="8" height="8" rx="2" stroke="currentColor" strokeWidth="2" />
       <rect x="3" y="13" width="8" height="8" rx="2" stroke="currentColor" strokeWidth="2" />
       <rect x="13" y="13" width="8" height="8" rx="2" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="shrink-0 opacity-90">
+      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
+      <path d="M4 20c0-3.5 3.5-6 8-6s8 2.5 8 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

@@ -1,10 +1,5 @@
 import PlatformConnectCard from "@/components/PlatformConnectCard";
-
-const PLATFORMS = [
-  { key: "shopify", name: "Shopify", description: "Reads orders, revenue, and product variants." },
-  { key: "meta", name: "Meta ads", description: "Reads spend, impressions, and CTR per product ad." },
-  { key: "google", name: "Google ads", description: "Reads cost and conversions per item ID." },
-];
+import { PLATFORMS } from "@/lib/platforms";
 
 export default function ConnectionsPage() {
   return (
@@ -16,13 +11,13 @@ export default function ConnectionsPage() {
       </p>
 
       <div className="space-y-4">
-        {PLATFORMS.map((p) => (
+        {Object.values(PLATFORMS).map((p) => (
           <PlatformConnectCard
             key={p.key}
             name={p.name}
             description={p.description}
             connected={false}
-            connectHref={`/api/connect/${p.key}`}
+            connectHref={`/dashboard/connections/${p.key}`}
           />
         ))}
       </div>

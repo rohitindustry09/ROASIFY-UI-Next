@@ -45,10 +45,33 @@ Visit `localhost:3000` — you'll land on `/login`. Enter any email, and the
 code will appear right in the UI (dev mode only) since no email sender is
 configured yet.
 
-## 3. Connecting platforms (next step, not yet wired up)
+## Why the platform env vars exist, even though users connect dynamically
+
+`META_APP_ID`, `GOOGLE_ADS_CLIENT_ID`, `SHOPIFY_API_KEY`, etc. are **your
+app's** identity with each platform, not any individual user's. OAuth always
+needs two identities: the user's account (dynamic — any shop, any ad
+account, chosen at click time) and the app's own registered identity (static
+— issued once when you register a developer app with that platform). Every
+"Sign in with Google" button on the internet works this way: the website has
+one Google Client ID, and any of Google's users can sign in through it. These
+three env var sets are that ID, for Meta, Google Ads, and Shopify. You still
+only set each one up once, and it works for every user who connects — nothing
+about the per-user, dynamic connection flow requires more than that.
+
+## Connecting platforms
+
+Click **Connect** on `/dashboard/connections` or `/dashboard/profile` (both
+show the same cards) to go to `/dashboard/connections/[platform]`, a page
+that explains what's being requested and — for Shopify — asks for the store
+domain. Submitting redirects to the platform's real OAuth screen, which will
+offer to continue with whatever account is already signed in on that
+platform in the user's browser (this is standard OAuth behavior, not
+anything Roasify has to implement). Right now that redirect only fires once
+the matching env var is set — otherwise the page redirects back with an
+inline "not configured yet" message instead of a raw error.
 
 Each of these needs you to register as a developer with the platform before
-the "Connect" buttons in `/dashboard/connections` will do anything real:
+the redirect will actually work:
 
 - **Shopify** — easiest to start with. Create a custom app in your dev store
   via the Shopify Partner dashboard to get an API key/secret without waiting
