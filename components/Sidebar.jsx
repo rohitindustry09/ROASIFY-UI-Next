@@ -6,6 +6,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 const ITEMS = [
   { href: "/dashboard", label: "Overview", Icon: GridIcon },
+  { href: "/dashboard/upload", label: "Upload data", Icon: UploadIcon },
   { href: "/dashboard/connections", label: "Connections", Icon: PlugIcon },
   { href: "/dashboard/profile", label: "Profile", Icon: UserIcon },
 ];
@@ -20,10 +21,14 @@ export default function Sidebar() {
     const exact = ITEMS.findIndex((i) => pathname === i.href);
     if (exact !== -1) return exact;
     const nested = ITEMS.findIndex((i) => i.href !== "/dashboard" && pathname.startsWith(i.href + "/"));
-    return nested !== -1 ? nested : 0;
+    return nested;
   })();
 
   useLayoutEffect(() => {
+    if (activeIdx === -1) {
+      setIndicator((prev) => ({ ...prev, ready: false }));
+      return;
+    }
     const el = itemRefs.current[activeIdx];
     const parent = navRef.current;
     if (el && parent) {
@@ -100,6 +105,14 @@ function GridIcon() {
       <rect x="13" y="3" width="8" height="8" rx="2" stroke="currentColor" strokeWidth="2" />
       <rect x="3" y="13" width="8" height="8" rx="2" stroke="currentColor" strokeWidth="2" />
       <rect x="13" y="13" width="8" height="8" rx="2" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="shrink-0 opacity-90">
+      <path d="M12 3v12M7 8l5-5 5 5M5 21h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
