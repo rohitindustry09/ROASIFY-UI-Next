@@ -40,6 +40,14 @@ export default function ConnectionsList({ platform, connections }) {
                 >
                   {c.status === "connected" ? "Connected" : "Error"}
                 </span>
+                {platform.key === "shopify" && (
+                  <Link
+                    href={`/dashboard/shopify-data/${c.id}`}
+                    className="text-[11.5px] font-semibold text-accent hover:underline"
+                  >
+                    View data
+                  </Link>
+                )}
                 <DisconnectButton id={c.id} />
               </div>
             </div>
