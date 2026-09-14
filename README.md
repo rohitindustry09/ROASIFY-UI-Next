@@ -58,6 +58,35 @@ three env var sets are that ID, for Meta, Google Ads, and Shopify. You still
 only set each one up once, and it works for every user who connects — nothing
 about the per-user, dynamic connection flow requires more than that.
 
+## Database (for saved platform connections)
+
+Connections/Profile now read from a real Postgres table instead of always
+showing "not connected" — this is what makes connecting more than one store
+per platform actually persist across page loads and devices.
+
+1. Create a project at supabase.com (free tier is fine).
+2. Open the SQL Editor and run `supabase/schema.sql` from this repo.
+3. Settings -> API -> copy the Project URL and the **service_role** key
+   (not the anon/public key) into `.env.local` as `SUPABASE_URL` and
+   `SUPABASE_SERVICE_ROLE_KEY`.
+4. Generate `ENCRYPTION_KEY` with `openssl rand -base64 32` and add it too.
+
+**Why the service role key and not the anon key:** the service role key
+bypasses Row Level Security entirely, which is intentional here — this app
+only ever talks to Supabase from server-side route handlers (never the
+browser), and every query is manually scoped to `user_email` from the
+signed-in session in `lib/connections.js`. The anon key is never used or
+needed. Never prefix this key `NEXT_PUBLIC_` or it ships to every browser.
+
+**Tokens are encrypted before they reach the database** (`lib/secretCrypto.js`,
+AES-GCM, keyed by `ENCRYPTION_KEY`) — a database leak alone doesn't expose
+usable OAuth tokens.
+
+I can't verify actual connectivity to Supabase's servers from my sandbox
+(same network restriction that blocked testing real Gmail sending earlier)
+— the code path is right, but test the real round-trip once you've got a
+project set up.
+
 ## Connecting platforms
 
 Click **Connect** on `/dashboard/connections` or `/dashboard/profile` (both
@@ -69,6 +98,16 @@ platform in the user's browser (this is standard OAuth behavior, not
 anything Roasify has to implement). Right now that redirect only fires once
 the matching env var is set — otherwise the page redirects back with an
 inline "not configured yet" message instead of a raw error.
+
+**On Shopify specifically:** unlike Google or Meta, Shopify has no single
+account that owns multiple stores — every store is a separate tenant with
+its own OAuth endpoint, so there's no way to skip asking for the store
+domain from an app-initiated "Connect" flow. Every real Shopify analytics
+tool (Triple Whale, Polar Analytics, etc.) asks for it the same way. The one
+way to skip it is the merchant installing from inside their own Shopify
+admin (via an App Store listing or direct install link) instead of clicking
+Connect from within Roasify — Shopify supplies the shop automatically in
+that case, since the merchant is already there.
 
 Each of these needs you to register as a developer with the platform before
 the redirect will actually work:

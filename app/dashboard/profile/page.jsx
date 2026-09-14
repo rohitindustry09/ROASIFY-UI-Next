@@ -1,11 +1,17 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import PlatformConnectCard from "@/components/PlatformConnectCard";
+import { listConnections } from "@/lib/connections";
 import { PLATFORMS } from "@/lib/platforms";
+import ConnectionsList from "@/components/ConnectionsList";
 
 export default async function ProfilePage() {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  const connections = await listConnections(session.email).catch((err) => {
+    console.error("[profile page]", err.message);
+    return [];
+  });
 
   return (
     <div className="stagger max-w-2xl">
@@ -20,13 +26,7 @@ export default async function ProfilePage() {
       <h2 className="mb-3 text-[14px] font-bold text-navy">Connected platforms</h2>
       <div className="space-y-4">
         {Object.values(PLATFORMS).map((p) => (
-          <PlatformConnectCard
-            key={p.key}
-            name={p.name}
-            description={p.description}
-            connected={false}
-            connectHref={`/dashboard/connections/${p.key}`}
-          />
+          <ConnectionsList key={p.key} platform={p} connections={connections} />
         ))}
       </div>
     </div>

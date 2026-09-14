@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "idb-keyval": "^6.3.0",
     "next": "^14.2.15",
     "nodemailer": "^10.0.9",
