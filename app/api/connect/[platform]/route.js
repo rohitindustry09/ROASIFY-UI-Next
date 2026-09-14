@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { buildShopifyAuthorizeUrl } from "@/lib/shopifyOAuth";
+import { buildMetaAuthorizeUrl } from "@/lib/metaOAuth";
+import { getSession } from "@/lib/session";
+import { signToken } from "@/lib/crypto";
 
 // This route performs the actual OAuth redirect. It's hit by the form on
 // /dashboard/connections/[platform] — not called directly by the UI.
@@ -45,12 +48,13 @@ export async function GET(request, { params }) {
   }
 
   if (platform === "meta") {
-    const authorizeUrl =
-      `https://www.facebook.com/v19.0/dialog/oauth` +
-      `?client_id=${process.env.META_APP_ID}` +
-      `&redirect_uri=${encodeURIComponent(`${site}/api/connect/meta/callback`)}` +
-      `&scope=ads_read`;
-    return NextResponse.redirect(authorizeUrl);
+    const session = await getSession();
+    if (!session) return NextResponse.redirect(`${origin}/login`);
+    // Signed, short-lived state token -- the callback checks this came
+    // from the same signed-in user and hasn't been replayed later, since
+    // Meta (unlike Shopify) doesn't sign its callback requests itself.
+    const state = await signToken({ email: session.email, exp: Date.now() + 10 * 60 * 1000 });
+    return NextResponse.redirect(buildMetaAuthorizeUrl(site, state));
   }
 
   if (platform === "google") {

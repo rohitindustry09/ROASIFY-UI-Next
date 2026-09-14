@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { addConnection } from "@/lib/connections";
 import { verifyShopifyHmac, isValidShopDomain } from "@/lib/shopifyHmac";
+import { verifyToken } from "@/lib/crypto";
+import { exchangeMetaCode, getLongLivedMetaToken } from "@/lib/metaOAuth";
+import { fetchMetaAdAccounts } from "@/lib/metaApi";
 
 // Where each platform redirects back to after the user approves access.
 // Shopify is fully implemented below. Meta and Google Ads still return the
@@ -27,12 +30,70 @@ export async function GET(request, { params }) {
     return handleShopifyCallback({ searchParams, origin, code, session });
   }
 
-  // TODO (meta, google): exchange `code` for real tokens once credentials
-  // exist, then addConnection(...) the same way handleShopifyCallback does.
+  if (platform === "meta") {
+    return handleMetaCallback({ searchParams, origin, code, session });
+  }
+
+  // TODO (google): exchange `code` for real tokens once credentials exist,
+  // then addConnection(...) the same way the other two handlers do.
   return NextResponse.json(
     { received: true, platform, note: "Token exchange not implemented yet for this platform." },
     { status: 501 }
   );
+}
+
+async function handleMetaCallback({ searchParams, origin, code, session }) {
+  const backToConnectPage = (error) =>
+    NextResponse.redirect(`${origin}/dashboard/connections/meta?error=${error}`);
+
+  const state = searchParams.get("state");
+  const stateData = await verifyToken(state);
+  if (!stateData || stateData.email !== session.email || Date.now() > stateData.exp) {
+    return backToConnectPage("invalid-request");
+  }
+
+  const site = process.env.NEXT_PUBLIC_SITE_URL || origin;
+
+  let accessToken;
+  try {
+    const shortLived = await exchangeMetaCode(code, site);
+    accessToken = await getLongLivedMetaToken(shortLived);
+  } catch (err) {
+    console.error("[meta callback] token exchange failed:", err.message);
+    return backToConnectPage("token-exchange-failed");
+  }
+
+  let accounts;
+  try {
+    accounts = await fetchMetaAdAccounts(accessToken);
+  } catch (err) {
+    console.error("[meta callback] fetching ad accounts failed:", err.message);
+    return backToConnectPage("token-exchange-failed");
+  }
+
+  if (accounts.length === 0) {
+    return backToConnectPage("no-ad-accounts");
+  }
+
+  // Meta's OAuth grants access to every ad account the user approved in one
+  // shot -- save each as its own connection, same as how a Shopify
+  // connection is one store each.
+  try {
+    for (const acct of accounts) {
+      await addConnection({
+        userEmail: session.email,
+        platform: "meta",
+        label: `${acct.name} (${acct.id})`,
+        accessToken,
+        meta: { adAccountId: acct.id, currency: acct.currency },
+      });
+    }
+  } catch (err) {
+    console.error("[meta callback] failed to save connection:", err.message);
+    return backToConnectPage("save-failed");
+  }
+
+  return NextResponse.redirect(`${origin}/dashboard/connections?connected=meta`);
 }
 
 async function handleShopifyCallback({ searchParams, origin, code, session }) {

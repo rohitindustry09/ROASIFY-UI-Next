@@ -48,6 +48,14 @@ export default function ConnectionsList({ platform, connections }) {
                     View data
                   </Link>
                 )}
+                {platform.key === "meta" && (
+                  <Link
+                    href={`/dashboard/meta-data/${c.id}`}
+                    className="text-[11.5px] font-semibold text-accent hover:underline"
+                  >
+                    View data
+                  </Link>
+                )}
                 <DisconnectButton id={c.id} />
               </div>
             </div>
