@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildShopifyAuthorizeUrl } from "@/lib/shopifyOAuth";
 
 // This route performs the actual OAuth redirect. It's hit by the form on
 // /dashboard/connections/[platform] — not called directly by the UI.
@@ -40,12 +41,7 @@ export async function GET(request, { params }) {
     const shopInput = searchParams.get("shop")?.trim();
     if (!shopInput) return backToConnectPage("missing-shop");
     const shop = shopInput.includes(".") ? shopInput : `${shopInput}.myshopify.com`;
-    const authorizeUrl =
-      `https://${shop}/admin/oauth/authorize` +
-      `?client_id=${process.env.SHOPIFY_API_KEY}` +
-      `&scope=read_orders,read_products` +
-      `&redirect_uri=${encodeURIComponent(`${site}/api/connect/shopify/callback`)}`;
-    return NextResponse.redirect(authorizeUrl);
+    return NextResponse.redirect(buildShopifyAuthorizeUrl(shop, site));
   }
 
   if (platform === "meta") {

@@ -5,6 +5,7 @@ const ERROR_COPY = {
   "not-configured":
     "This platform isn't set up yet — the app doesn't have developer credentials for it. See README.md \u2192 \"Connecting platforms\".",
   "missing-shop": "Enter your store's .myshopify.com domain before continuing.",
+  "invalid-request": "That install link didn't check out — try connecting from your Shopify admin instead, or use the form below.",
 };
 
 export default function ConnectPlatformPage({ params, searchParams }) {
@@ -27,6 +28,13 @@ export default function ConnectPlatformPage({ params, searchParams }) {
       {error && (
         <p className="mb-5 rounded-xl border border-[#FECACA] bg-red-bg px-4 py-3 text-[13px] leading-relaxed text-red">
           {error}
+        </p>
+      )}
+
+      {platform.needsShopDomain && (
+        <p className="mb-5 rounded-xl border border-line bg-[#FAFAFB] px-4 py-3 text-[12.5px] leading-relaxed text-text-dim">
+          Prefer not to type your domain? Open your Shopify admin directly and install Roasify
+          from there instead — Shopify sends your store over automatically, no typing needed.
         </p>
       )}
 
