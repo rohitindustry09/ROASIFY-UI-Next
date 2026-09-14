@@ -4,7 +4,7 @@ import { listConnections } from "@/lib/connections";
 import { PLATFORMS } from "@/lib/platforms";
 import ConnectionsList from "@/components/ConnectionsList";
 
-export default async function ConnectionsPage() {
+export default async function ConnectionsPage({ searchParams }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -12,6 +12,8 @@ export default async function ConnectionsPage() {
     console.error("[connections page]", err.message);
     return [];
   });
+
+  const justConnected = searchParams?.connected;
 
   return (
     <div className="stagger max-w-2xl">
@@ -21,6 +23,12 @@ export default async function ConnectionsPage() {
         your own account — nothing is read live on every page load. You can connect
         more than one store or ad account per platform.
       </p>
+
+      {justConnected && (
+        <p className="mb-5 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-4 py-3 text-[13px] text-[#166534]">
+          Connected {justConnected} successfully.
+        </p>
+      )}
 
       <div className="space-y-4">
         {Object.values(PLATFORMS).map((p) => (

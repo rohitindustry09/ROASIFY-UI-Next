@@ -6,6 +6,8 @@ const ERROR_COPY = {
     "This platform isn't set up yet — the app doesn't have developer credentials for it. See README.md \u2192 \"Connecting platforms\".",
   "missing-shop": "Enter your store's .myshopify.com domain before continuing.",
   "invalid-request": "That install link didn't check out — try connecting from your Shopify admin instead, or use the form below.",
+  "token-exchange-failed": "Shopify approved the request but the token exchange failed. Double-check SHOPIFY_API_KEY and SHOPIFY_API_SECRET, then try again.",
+  "save-failed": "Got a token from Shopify but couldn't save it — check your database connection (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY) and try again.",
 };
 
 export default function ConnectPlatformPage({ params, searchParams }) {

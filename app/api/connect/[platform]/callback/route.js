@@ -1,33 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { addConnection } from "@/lib/connections";
+import { verifyShopifyHmac, isValidShopDomain } from "@/lib/shopifyHmac";
 
 // Where each platform redirects back to after the user approves access.
-// The `code` query param is a one-time authorization code that must be
-// exchanged server-side for real tokens -- that exchange is platform-
-// specific (different endpoint, payload shape, and response fields for
-// Shopify vs Meta vs Google) and isn't implemented yet, since none of the
-// three have real developer credentials configured (see README).
-//
-// The storage side IS implemented: once you have real tokens, saving them
-// looks like this (shown for Shopify as an example):
-//
-//   const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify({
-//       client_id: process.env.SHOPIFY_API_KEY,
-//       client_secret: process.env.SHOPIFY_API_SECRET,
-//       code,
-//     }),
-//   });
-//   const { access_token } = await tokenRes.json();
-//   await addConnection({
-//     userEmail: session.email,
-//     platform: "shopify",
-//     label: shop,
-//     accessToken: access_token, // encrypted automatically before storage
-//   });
+// Shopify is fully implemented below. Meta and Google Ads still return the
+// 501 stub at the bottom, since neither has real developer credentials
+// configured yet -- each platform's token exchange has a different
+// endpoint and payload shape, so they're implemented one at a time as
+// credentials become available.
 export async function GET(request, { params }) {
   const { platform } = params;
   const { searchParams, origin } = new URL(request.url);
@@ -42,10 +23,77 @@ export async function GET(request, { params }) {
     return NextResponse.redirect(`${origin}/dashboard/connections/${platform}?error=not-configured`);
   }
 
-  // TODO: exchange `code` for real tokens per-platform, then call
-  // addConnection(...) as shown above, then redirect to success below.
+  if (platform === "shopify") {
+    return handleShopifyCallback({ searchParams, origin, code, session });
+  }
+
+  // TODO (meta, google): exchange `code` for real tokens once credentials
+  // exist, then addConnection(...) the same way handleShopifyCallback does.
   return NextResponse.json(
-    { received: true, platform, note: "Token exchange not implemented yet — see comments in this file." },
+    { received: true, platform, note: "Token exchange not implemented yet for this platform." },
     { status: 501 }
   );
+}
+
+async function handleShopifyCallback({ searchParams, origin, code, session }) {
+  const shop = searchParams.get("shop");
+  const backToConnectPage = (error) =>
+    NextResponse.redirect(`${origin}/dashboard/connections/shopify?error=${error}`);
+
+  if (!shop || !isValidShopDomain(shop)) {
+    return backToConnectPage("missing-shop");
+  }
+
+  // Confirms this callback genuinely came from Shopify, not a forged
+  // request hitting this URL directly with someone else's shop/code.
+  const verified = await verifyShopifyHmac(searchParams);
+  if (!verified) {
+    return backToConnectPage("invalid-request");
+  }
+
+  let accessToken;
+  let grantedScope;
+  try {
+    const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: process.env.SHOPIFY_API_KEY,
+        client_secret: process.env.SHOPIFY_API_SECRET,
+        code,
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      const detail = await tokenRes.text();
+      console.error(`[shopify callback] token exchange failed (${tokenRes.status}):`, detail);
+      return backToConnectPage("token-exchange-failed");
+    }
+
+    const tokenData = await tokenRes.json();
+    accessToken = tokenData.access_token;
+    grantedScope = tokenData.scope;
+    if (!accessToken) {
+      console.error("[shopify callback] no access_token in response:", tokenData);
+      return backToConnectPage("token-exchange-failed");
+    }
+  } catch (err) {
+    console.error("[shopify callback] token exchange request failed:", err.message);
+    return backToConnectPage("token-exchange-failed");
+  }
+
+  try {
+    await addConnection({
+      userEmail: session.email,
+      platform: "shopify",
+      label: shop,
+      accessToken,
+      meta: { scope: grantedScope },
+    });
+  } catch (err) {
+    console.error("[shopify callback] failed to save connection:", err.message);
+    return backToConnectPage("save-failed");
+  }
+
+  return NextResponse.redirect(`${origin}/dashboard/connections?connected=shopify`);
 }
