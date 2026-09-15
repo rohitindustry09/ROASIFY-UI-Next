@@ -1,22 +1,33 @@
 import { notFound } from "next/navigation";
 import { getPlatform } from "@/lib/platforms";
 
-const ERROR_COPY = {
-  "not-configured":
-    "This platform isn't set up yet — the app doesn't have developer credentials for it. See README.md \u2192 \"Connecting platforms\".",
-  "missing-shop": "Enter your store's .myshopify.com domain before continuing.",
-  "invalid-request": "That install link didn't check out — try connecting from your Shopify admin instead, or use the form below.",
-  "token-exchange-failed": "Shopify approved the request but the token exchange failed. Double-check SHOPIFY_API_KEY and SHOPIFY_API_SECRET, then try again.",
-  "save-failed": "Got a token from Shopify but couldn't save it — check your database connection (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY) and try again.",
-  "no-ad-accounts": "That Meta account doesn't have any ad accounts to connect. Try a different account, or check you granted access to at least one.",
-  "no-refresh-token": "Google didn't return a long-term token — this happens if you've connected before. Revoke access at myaccount.google.com/permissions (find Roasify) and try connecting again.",
+const ENV_VAR_HINTS = {
+  shopify: "SHOPIFY_API_KEY / SHOPIFY_API_SECRET",
+  meta: "META_APP_ID / META_APP_SECRET",
+  google: "GOOGLE_ADS_CLIENT_ID / GOOGLE_ADS_CLIENT_SECRET (or GOOGLE_ADS_DEVELOPER_TOKEN, if the account list fetch is what failed)",
 };
+
+function getErrorCopy(errorCode, platform) {
+  const hint = ENV_VAR_HINTS[platform.key];
+  const map = {
+    "not-configured":
+      "This platform isn't set up yet — the app doesn't have developer credentials for it. See README.md \u2192 \"Connecting platforms\".",
+    "missing-shop": "Enter your store's .myshopify.com domain before continuing.",
+    "invalid-request": `That request didn't check out — try connecting from ${platform.name}'s own dashboard instead, or try again below.`,
+    "token-exchange-failed": `${platform.name} approved the request but something failed right after. Double-check ${hint} in Vercel, then try again — if it's still unclear, check the Vercel Functions logs for the exact error.`,
+    "save-failed": `Got a token from ${platform.name} but couldn't save it — check your database connection (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY) and try again.`,
+    "no-ad-accounts": `That ${platform.name} account doesn't have any ad accounts to connect. Try a different account, or check you granted access to at least one.`,
+    "no-refresh-token":
+      "Google didn't return a long-term token — this happens if you've connected before. Revoke access at myaccount.google.com/permissions (find Roasify) and try connecting again.",
+  };
+  return map[errorCode] || "Something went wrong.";
+}
 
 export default function ConnectPlatformPage({ params, searchParams }) {
   const platform = getPlatform(params.platform);
   if (!platform) notFound();
 
-  const error = searchParams?.error ? ERROR_COPY[searchParams.error] || "Something went wrong." : null;
+  const error = searchParams?.error ? getErrorCopy(searchParams.error, platform) : null;
 
   return (
     <div className="stagger max-w-md">
