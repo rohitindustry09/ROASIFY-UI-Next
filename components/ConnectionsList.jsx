@@ -1,6 +1,12 @@
 import Link from "next/link";
 import DisconnectButton from "@/components/DisconnectButton";
 
+const DATA_PAGE = {
+  shopify: "shopify-data",
+  meta: "meta-data",
+  google: "google-data",
+};
+
 export default function ConnectionsList({ platform, connections }) {
   const forPlatform = connections.filter((c) => c.platform === platform.key);
 
@@ -40,17 +46,9 @@ export default function ConnectionsList({ platform, connections }) {
                 >
                   {c.status === "connected" ? "Connected" : "Error"}
                 </span>
-                {platform.key === "shopify" && (
+                {DATA_PAGE[platform.key] && (
                   <Link
-                    href={`/dashboard/shopify-data/${c.id}`}
-                    className="text-[11.5px] font-semibold text-accent hover:underline"
-                  >
-                    View data
-                  </Link>
-                )}
-                {platform.key === "meta" && (
-                  <Link
-                    href={`/dashboard/meta-data/${c.id}`}
+                    href={`/dashboard/${DATA_PAGE[platform.key]}/${c.id}`}
                     className="text-[11.5px] font-semibold text-accent hover:underline"
                   >
                     View data

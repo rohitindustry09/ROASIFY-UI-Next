@@ -5,13 +5,11 @@ import { verifyShopifyHmac, isValidShopDomain } from "@/lib/shopifyHmac";
 import { verifyToken } from "@/lib/crypto";
 import { exchangeMetaCode, getLongLivedMetaToken } from "@/lib/metaOAuth";
 import { fetchMetaAdAccounts } from "@/lib/metaApi";
+import { exchangeGoogleCode } from "@/lib/googleAdsOAuth";
+import { listAccessibleCustomers } from "@/lib/googleAdsApi";
 
 // Where each platform redirects back to after the user approves access.
-// Shopify is fully implemented below. Meta and Google Ads still return the
-// 501 stub at the bottom, since neither has real developer credentials
-// configured yet -- each platform's token exchange has a different
-// endpoint and payload shape, so they're implemented one at a time as
-// credentials become available.
+// All three platforms are fully implemented below.
 export async function GET(request, { params }) {
   const { platform } = params;
   const { searchParams, origin } = new URL(request.url);
@@ -34,12 +32,72 @@ export async function GET(request, { params }) {
     return handleMetaCallback({ searchParams, origin, code, session });
   }
 
-  // TODO (google): exchange `code` for real tokens once credentials exist,
-  // then addConnection(...) the same way the other two handlers do.
-  return NextResponse.json(
-    { received: true, platform, note: "Token exchange not implemented yet for this platform." },
-    { status: 501 }
-  );
+  if (platform === "google") {
+    return handleGoogleCallback({ searchParams, origin, code, session });
+  }
+
+  return NextResponse.json({ error: "Unknown platform" }, { status: 404 });
+}
+
+async function handleGoogleCallback({ searchParams, origin, code, session }) {
+  const backToConnectPage = (error) =>
+    NextResponse.redirect(`${origin}/dashboard/connections/google?error=${error}`);
+
+  const state = searchParams.get("state");
+  const stateData = await verifyToken(state);
+  if (!stateData || stateData.email !== session.email || Date.now() > stateData.exp) {
+    return backToConnectPage("invalid-request");
+  }
+
+  const site = process.env.NEXT_PUBLIC_SITE_URL || origin;
+
+  let accessToken, refreshToken;
+  try {
+    const result = await exchangeGoogleCode(code, site);
+    accessToken = result.accessToken;
+    refreshToken = result.refreshToken;
+  } catch (err) {
+    console.error("[google callback] token exchange failed:", err.message);
+    return backToConnectPage("token-exchange-failed");
+  }
+
+  if (!refreshToken) {
+    // Happens if the user had already granted consent before and Google
+    // skipped re-issuing a refresh_token despite prompt=consent -- ask them
+    // to revoke access at myaccount.google.com/permissions and reconnect.
+    console.error("[google callback] no refresh_token returned");
+    return backToConnectPage("no-refresh-token");
+  }
+
+  let customerIds;
+  try {
+    customerIds = await listAccessibleCustomers(accessToken);
+  } catch (err) {
+    console.error("[google callback] listing accounts failed:", err.message);
+    return backToConnectPage("token-exchange-failed");
+  }
+
+  if (customerIds.length === 0) {
+    return backToConnectPage("no-ad-accounts");
+  }
+
+  try {
+    for (const customerId of customerIds) {
+      await addConnection({
+        userEmail: session.email,
+        platform: "google",
+        label: `Google Ads (${customerId})`,
+        accessToken,
+        refreshToken,
+        meta: { customerId },
+      });
+    }
+  } catch (err) {
+    console.error("[google callback] failed to save connection:", err.message);
+    return backToConnectPage("save-failed");
+  }
+
+  return NextResponse.redirect(`${origin}/dashboard/connections?connected=google`);
 }
 
 async function handleMetaCallback({ searchParams, origin, code, session }) {

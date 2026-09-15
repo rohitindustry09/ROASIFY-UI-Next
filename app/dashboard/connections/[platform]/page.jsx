@@ -9,6 +9,7 @@ const ERROR_COPY = {
   "token-exchange-failed": "Shopify approved the request but the token exchange failed. Double-check SHOPIFY_API_KEY and SHOPIFY_API_SECRET, then try again.",
   "save-failed": "Got a token from Shopify but couldn't save it — check your database connection (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY) and try again.",
   "no-ad-accounts": "That Meta account doesn't have any ad accounts to connect. Try a different account, or check you granted access to at least one.",
+  "no-refresh-token": "Google didn't return a long-term token — this happens if you've connected before. Revoke access at myaccount.google.com/permissions (find Roasify) and try connecting again.",
 };
 
 export default function ConnectPlatformPage({ params, searchParams }) {

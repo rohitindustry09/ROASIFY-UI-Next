@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildShopifyAuthorizeUrl } from "@/lib/shopifyOAuth";
 import { buildMetaAuthorizeUrl } from "@/lib/metaOAuth";
+import { buildGoogleAuthorizeUrl } from "@/lib/googleAdsOAuth";
 import { getSession } from "@/lib/session";
 import { signToken } from "@/lib/crypto";
 
@@ -58,12 +59,9 @@ export async function GET(request, { params }) {
   }
 
   if (platform === "google") {
-    const authorizeUrl =
-      `https://accounts.google.com/o/oauth2/v2/auth` +
-      `?client_id=${process.env.GOOGLE_ADS_CLIENT_ID}` +
-      `&redirect_uri=${encodeURIComponent(`${site}/api/connect/google/callback`)}` +
-      `&response_type=code&scope=https://www.googleapis.com/auth/adwords` +
-      `&access_type=offline&prompt=consent`;
-    return NextResponse.redirect(authorizeUrl);
+    const session = await getSession();
+    if (!session) return NextResponse.redirect(`${origin}/login`);
+    const state = await signToken({ email: session.email, exp: Date.now() + 10 * 60 * 1000 });
+    return NextResponse.redirect(buildGoogleAuthorizeUrl(site, state));
   }
 }
