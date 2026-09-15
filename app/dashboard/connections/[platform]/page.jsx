@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getPlatform } from "@/lib/platforms";
+import ErrorAlertBadge from "@/components/ErrorAlertBadge";
 
 const ENV_VAR_HINTS = {
   shopify: "SHOPIFY_API_KEY / SHOPIFY_API_SECRET",
@@ -30,62 +31,60 @@ export default function ConnectPlatformPage({ params, searchParams }) {
   const error = searchParams?.error ? getErrorCopy(searchParams.error, platform) : null;
 
   return (
-    <div className="stagger max-w-md">
-      <h1 className="mb-1 font-display text-[22px] font-bold text-navy">
-        Connect {platform.name}
-      </h1>
-      <p className="mb-6 text-[13.5px] text-text-dim">
-        You'll be sent to {platform.name}'s own sign-in screen. If you're already
-        signed in to {platform.name} in this browser, it'll offer to continue with
-        that account directly — Roasify never sees your {platform.name} password.
-      </p>
+    <div className="flex min-h-[75vh] items-center justify-center">
+      <div className="stagger w-full max-w-md">
+        <ErrorAlertBadge message={error} />
 
-      {error && (
-        <p className="mb-5 rounded-xl border border-[#FECACA] bg-red-bg px-4 py-3 text-[13px] leading-relaxed text-red">
-          {error}
+        <h1 className="mb-1 font-display text-[22px] font-bold text-navy">
+          Connect {platform.name}
+        </h1>
+        <p className="mb-6 text-[13.5px] text-text-dim">
+          You'll be sent to {platform.name}'s own sign-in screen. If you're already
+          signed in to {platform.name} in this browser, it'll offer to continue with
+          that account directly — Roasify never sees your {platform.name} password.
         </p>
-      )}
 
-      {platform.needsShopDomain && (
-        <p className="mb-5 rounded-xl border border-line bg-[#FAFAFB] px-4 py-3 text-[12.5px] leading-relaxed text-text-dim">
-          Prefer not to type your domain? Open your Shopify admin directly and install Roasify
-          from there instead — Shopify sends your store over automatically, no typing needed.
-        </p>
-      )}
-
-      <form
-        action={`/api/connect/${platform.key}`}
-        method="GET"
-        className="rounded-2xl border border-line bg-card p-6 shadow-[0_1px_2px_rgba(20,30,80,.03)]"
-      >
         {platform.needsShopDomain && (
-          <div className="mb-4">
-            <label htmlFor="shop" className="mb-1.5 block text-[12.5px] font-semibold text-navy">
-              Your store domain
-            </label>
-            <div className="flex items-center overflow-hidden rounded-[14px] border border-line focus-within:border-[#566CBD]">
-              <input
-                id="shop"
-                name="shop"
-                type="text"
-                required
-                placeholder="yourstore"
-                className="w-full px-4 py-3 text-[13px] text-navy outline-none placeholder:text-text-dim"
-              />
-              <span className="whitespace-nowrap bg-[#FAFAFB] px-3 py-3 text-[12.5px] text-text-dim">
-                .myshopify.com
-              </span>
-            </div>
-          </div>
+          <p className="mb-5 rounded-xl border border-line bg-[#FAFAFB] px-4 py-3 text-[12.5px] leading-relaxed text-text-dim">
+            Prefer not to type your domain? Open your Shopify admin directly and install Roasify
+            from there instead — Shopify sends your store over automatically, no typing needed.
+          </p>
         )}
 
-        <button
-          type="submit"
-          className="pill w-full rounded-full bg-lime py-3 text-[13px] font-extrabold text-navy hover:bg-lime-dark hover:shadow-[0_4px_14px_-4px_rgba(207,224,94,.7)]"
+        <form
+          action={`/api/connect/${platform.key}`}
+          method="GET"
+          className="rounded-2xl border border-line bg-card p-6 shadow-[0_1px_2px_rgba(20,30,80,.03)]"
         >
-          Continue to {platform.name}
-        </button>
-      </form>
+          {platform.needsShopDomain && (
+            <div className="mb-4">
+              <label htmlFor="shop" className="mb-1.5 block text-[12.5px] font-semibold text-navy">
+                Your store domain
+              </label>
+              <div className="flex items-center overflow-hidden rounded-[14px] border border-line focus-within:border-[#566CBD]">
+                <input
+                  id="shop"
+                  name="shop"
+                  type="text"
+                  required
+                  placeholder="yourstore"
+                  className="w-full px-4 py-3 text-[13px] text-navy outline-none placeholder:text-text-dim"
+                />
+                <span className="whitespace-nowrap bg-[#FAFAFB] px-3 py-3 text-[12.5px] text-text-dim">
+                  .myshopify.com
+                </span>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="pill w-full rounded-full bg-lime py-3 text-[13px] font-extrabold text-navy hover:bg-lime-dark hover:shadow-[0_4px_14px_-4px_rgba(207,224,94,.7)]"
+          >
+            Continue to {platform.name}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
