@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { listConnections } from "@/lib/connections";
 import { PLATFORMS } from "@/lib/platforms";
 import ConnectionsList from "@/components/ConnectionsList";
+import DeleteAccountButton from "@/components/DeleteAccountButton";
 
 export default async function ProfilePage() {
   const session = await getSession();
@@ -28,6 +29,10 @@ export default async function ProfilePage() {
         {Object.values(PLATFORMS).map((p) => (
           <ConnectionsList key={p.key} platform={p} connections={connections} />
         ))}
+      </div>
+
+      <div className="mt-8 border-t border-line pt-6">
+        <DeleteAccountButton />
       </div>
     </div>
   );
