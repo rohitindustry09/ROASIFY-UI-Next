@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { getConnectionTokens } from "@/lib/connections";
-import { fetchMetaOverview } from "@/lib/metaApi";
+import { fetchAdAccountInsights } from "@/lib/metaSystemUser";
 
 export async function GET(request, { params }) {
   const session = await getSession();
@@ -18,13 +18,20 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: "Not a Meta connection." }, { status: 400 });
   }
 
+  const accountId = connection.meta?.adAccountId;
+  if (!accountId) {
+    return NextResponse.json({ error: "Couldn't determine which ad account this is." }, { status: 400 });
+  }
+
   try {
-    const overview = await fetchMetaOverview(connection.accessToken);
-    return NextResponse.json({ label: connection.label, ...overview });
+    // Uses the shared System User token (env var), not any per-connection
+    // token -- see lib/metaSystemUser.js for why.
+    const account = await fetchAdAccountInsights(accountId);
+    return NextResponse.json({ accounts: [account] });
   } catch (err) {
     console.error("[sync/meta] fetch failed:", err.message);
     return NextResponse.json(
-      { error: "Couldn't fetch data from Meta. The token may have expired or been revoked." },
+      { error: "Couldn't fetch data from Meta. The account may no longer be shared with Roasify." },
       { status: 502 }
     );
   }

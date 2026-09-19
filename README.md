@@ -99,37 +99,55 @@ anything Roasify has to implement). Right now that redirect only fires once
 the matching env var is set — otherwise the page redirects back with an
 inline "not configured yet" message instead of a raw error.
 
-**On Shopify specifically:** unlike Google or Meta, Shopify has no single
-account that owns multiple stores — every store is a separate tenant with
-its own OAuth endpoint, so there's no way to skip asking for the store
-domain from an app-initiated "Connect" flow. Every real Shopify analytics
-tool (Triple Whale, Polar Analytics, etc.) asks for it the same way. The one
-way to skip it is the merchant installing from inside their own Shopify
-admin (via an App Store listing or direct install link) instead of clicking
-Connect from within Roasify — Shopify supplies the shop automatically in
-that case, since the merchant is already there.
+**On Shopify specifically:** unlike Google, Shopify has no single account
+that owns multiple stores — every store is a separate tenant with its own
+OAuth endpoint, so there's no way to skip asking for the store domain from
+an app-initiated "Connect" flow. Every real Shopify analytics tool (Triple
+Whale, Polar Analytics, etc.) asks for it the same way. The one way to skip
+it is the merchant installing from inside their own Shopify admin (via an
+App Store listing or direct install link) instead of clicking Connect from
+within Roasify — Shopify supplies the shop automatically in that case,
+since the merchant is already there (see `/api/connect/shopify/install`).
 
-Each of these needs you to register as a developer with the platform before
-the redirect will actually work:
+**On Meta specifically — this one works differently from the other two.**
+Instead of per-user OAuth login, Meta connections use a System User token
+tied to Roasify's own Business Portfolio (`lib/metaSystemUser.js`). Sellers
+share their ad account with Roasify's Business ID from their own Meta
+Business Settings, then pick their account from a list of shared-but-
+unclaimed accounts in Roasify (`components/MetaClaimFlow.jsx`) — no Meta
+login inside Roasify at all. This was a deliberate choice over per-user
+OAuth: one token that can be set to never expire, instead of many
+individually-expiring user tokens to manage. The tradeoff is a more manual
+first step for the seller (sharing via Business Settings instead of a
+one-click login), and Meta requires **Business Verification** of Roasify's
+own Business Portfolio (real business documents, reviewed by Meta) before
+`ads_read`/`business_management` work for accounts outside your own
+business — a heavier, slower process than the per-user OAuth App Review
+alone would have needed.
+
+Setup, per platform:
 
 - **Shopify** — easiest to start with. Create a custom app in your dev store
   via the Shopify Partner dashboard to get an API key/secret without waiting
   on app review.
-- **Meta Ads** — create an app at developers.facebook.com, then request the
-  `ads_read` permission via App Review. This can take from days to a couple
-  of weeks — start it early.
 - **Google Ads** — apply for a developer token in Google Ads API Center, and
   create OAuth credentials in Google Cloud Console. Basic access is granted
   quickly; Standard access (needed once you're live) requires an application.
+- **Meta Ads** — create a Business Portfolio at business.facebook.com if you
+  don't have one, create a Business-type app at developers.facebook.com with
+  the Marketing API use case, then in Business Settings → Users → System
+  Users: create a System User, assign your app and at least the permission
+  to generate tokens, and generate a token with `ads_read` scope set to
+  never expire. `META_BUSINESS_ID` is your Business Portfolio's ID (visible
+  in Business Settings → Business Info). Real cross-business use needs
+  Business Verification — start that early, it's the slow part.
 
-Once you have credentials for a platform, uncomment the relevant block in
-`app/api/connect/[platform]/route.js`, add a matching `callback` route that
-exchanges the returned code for tokens, and store those tokens **encrypted**
-in a database table keyed to the Supabase user ID. A scheduled job (cron,
-Supabase Edge Function, or a queue) should then use those tokens to pull
-fresh data on an interval and write it into your own tables — the dashboard
-should always read from there, never call the platform APIs directly on
-page load.
+A scheduled job (cron, Supabase Edge Function, or a queue) should use the
+stored tokens to pull fresh data on an interval and write it into your own
+tables — the dashboard should always read from there, never call the
+platform APIs directly on page load. The "View data" pages currently fetch
+live on each visit as a simpler starting point; swap that for a real sync
+job before this handles meaningful traffic.
 
 ## Design notes
 

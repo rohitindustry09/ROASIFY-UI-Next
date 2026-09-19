@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getPlatform } from "@/lib/platforms";
 import ErrorAlertBadge from "@/components/ErrorAlertBadge";
+import MetaClaimFlow from "@/components/MetaClaimFlow";
 
 const ENV_VAR_HINTS = {
   shopify: "SHOPIFY_API_KEY / SHOPIFY_API_SECRET",
@@ -29,6 +30,17 @@ export default function ConnectPlatformPage({ params, searchParams }) {
   if (!platform) notFound();
 
   const error = searchParams?.error ? getErrorCopy(searchParams.error, platform) : null;
+
+  if (platform.key === "meta") {
+    return (
+      <div className="flex min-h-[75vh] items-center justify-center">
+        <div className="stagger relative w-full max-w-lg">
+          <ErrorAlertBadge message={error} />
+          <MetaClaimFlow businessId={process.env.META_BUSINESS_ID} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-[75vh] items-center justify-center">
