@@ -36,7 +36,7 @@ export default function ConnectPlatformPage({ params, searchParams }) {
       <div className="flex min-h-[75vh] items-center justify-center">
         <div className="stagger relative w-full max-w-lg">
           <ErrorAlertBadge message={error} />
-          <MetaClaimFlow businessId={process.env.META_BUSINESS_ID} />
+          <MetaClaimFlow />
         </div>
       </div>
     );

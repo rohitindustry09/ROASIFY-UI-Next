@@ -24,9 +24,9 @@ export async function GET(request, { params }) {
   }
 
   try {
-    // Uses the shared System User token (env var), not any per-connection
-    // token -- see lib/metaSystemUser.js for why.
-    const account = await fetchAdAccountInsights(accountId);
+    // Uses this connection's own stored token (each user's own System User
+    // token, saved at claim time), not a global env var.
+    const account = await fetchAdAccountInsights(accountId, connection.accessToken);
     return NextResponse.json({ accounts: [account] });
   } catch (err) {
     console.error("[sync/meta] fetch failed:", err.message);

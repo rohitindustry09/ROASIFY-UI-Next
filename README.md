@@ -65,7 +65,9 @@ showing "not connected" — this is what makes connecting more than one store
 per platform actually persist across page loads and devices.
 
 1. Create a project at supabase.com (free tier is fine).
-2. Open the SQL Editor and run `supabase/schema.sql` from this repo.
+2. Open the SQL Editor and run `supabase/schema.sql` from this repo, then
+   also run `supabase/002_meta_credentials.sql` (needed for users to save
+   their own Meta Business credentials — see "Connecting platforms" below).
 3. Settings -> API -> copy the Project URL and the **service_role** key
    (not the anon/public key) into `.env.local` as `SUPABASE_URL` and
    `SUPABASE_SERVICE_ROLE_KEY`.
@@ -109,21 +111,23 @@ App Store listing or direct install link) instead of clicking Connect from
 within Roasify — Shopify supplies the shop automatically in that case,
 since the merchant is already there (see `/api/connect/shopify/install`).
 
-**On Meta specifically — this one works differently from the other two.**
-Instead of per-user OAuth login, Meta connections use a System User token
-tied to Roasify's own Business Portfolio (`lib/metaSystemUser.js`). Sellers
-share their ad account with Roasify's Business ID from their own Meta
-Business Settings, then pick their account from a list of shared-but-
-unclaimed accounts in Roasify (`components/MetaClaimFlow.jsx`) — no Meta
-login inside Roasify at all. This was a deliberate choice over per-user
-OAuth: one token that can be set to never expire, instead of many
-individually-expiring user tokens to manage. The tradeoff is a more manual
-first step for the seller (sharing via Business Settings instead of a
-one-click login), and Meta requires **Business Verification** of Roasify's
-own Business Portfolio (real business documents, reviewed by Meta) before
-`ads_read`/`business_management` work for accounts outside your own
-business — a heavier, slower process than the per-user OAuth App Review
-alone would have needed.
+**On Meta specifically — this one works differently from the other two, and
+differently from a typical multi-tenant setup.** There's no single Roasify-
+wide Meta app or Business Portfolio. Each signed-in user enters their own
+Business ID and System User token directly in the app (Connections → Meta
+ads), saved encrypted per-user (`meta_credentials` table). Once saved,
+Roasify lists every ad account shared with *that user's own* Business
+Portfolio — their own clients, if they're running Roasify as an agency —
+and each one gets an "Analyze" button. No Meta login inside Roasify at all;
+sellers share their account from their own Meta Business Settings instead.
+
+This is a deliberate tradeoff over per-user OAuth: no `META_APP_ID`/App
+Review process for you to run at all, since each user brings their own
+already-approved Meta setup. The cost is that setting up a System User
+token is a more involved first step for each user than a one-click OAuth
+login — worth it specifically because it avoids you needing Meta App
+Review and Business Verification altogether, which is what made the
+earlier per-user-OAuth-through-Roasify's-own-app version slow to get live.
 
 Setup, per platform:
 
@@ -133,14 +137,13 @@ Setup, per platform:
 - **Google Ads** — apply for a developer token in Google Ads API Center, and
   create OAuth credentials in Google Cloud Console. Basic access is granted
   quickly; Standard access (needed once you're live) requires an application.
-- **Meta Ads** — create a Business Portfolio at business.facebook.com if you
-  don't have one, create a Business-type app at developers.facebook.com with
+- **Meta Ads** — nothing for you to set up. Each user does this themselves,
+  inside the app: create a Business Portfolio at business.facebook.com if
+  they don't have one, a Business-type app at developers.facebook.com with
   the Marketing API use case, then in Business Settings → Users → System
-  Users: create a System User, assign your app and at least the permission
-  to generate tokens, and generate a token with `ads_read` scope set to
-  never expire. `META_BUSINESS_ID` is your Business Portfolio's ID (visible
-  in Business Settings → Business Info). Real cross-business use needs
-  Business Verification — start that early, it's the slow part.
+  Users: create a System User, assign their app, and generate a token with
+  `ads_read` scope set to never expire. Their Business ID is in Business
+  Settings → Business Info. They paste both into Roasify once.
 
 A scheduled job (cron, Supabase Edge Function, or a queue) should use the
 stored tokens to pull fresh data on an interval and write it into your own
