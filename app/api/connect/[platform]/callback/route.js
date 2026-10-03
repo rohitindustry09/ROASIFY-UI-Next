@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { addConnection } from "@/lib/connections";
 import { verifyShopifyHmac, isValidShopDomain } from "@/lib/shopifyHmac";
 import { verifyShopifyState, verifyGoogleState } from "@/lib/shopifyOAuth";
+import { buildPendingInstallCookie } from "@/lib/pendingInstall";
 import { exchangeGoogleCode } from "@/lib/googleAdsOAuth";
 import { listAccessibleCustomers } from "@/lib/googleAdsApi";
 
@@ -14,7 +15,10 @@ export async function GET(request, { params }) {
   const code = searchParams.get("code");
 
   const session = await getSession();
-  if (!session) {
+  // Shopify installs started from the merchant's own admin can arrive before
+  // anyone is signed in to Roasify; that handler parks the token (see
+  // lib/pendingInstall.js) instead of dropping it.
+  if (!session && platform !== "shopify") {
     return NextResponse.redirect(`${origin}/login`);
   }
 
@@ -107,7 +111,7 @@ async function handleShopifyCallback({ searchParams, origin, code, session }) {
 
   // Ties this callback to a flow Roasify started (CSRF protection): the
   // state must be one we signed, for this shop, and for this signed-in user.
-  if (!(await verifyShopifyState(searchParams.get("state"), { shop, email: session.email }))) {
+  if (!(await verifyShopifyState(searchParams.get("state"), { shop, email: session?.email }))) {
     return backToConnectPage("invalid-request");
   }
 
@@ -147,6 +151,13 @@ async function handleShopifyCallback({ searchParams, origin, code, session }) {
   } catch (err) {
     console.error("[shopify callback] token exchange request failed:", err.message);
     return backToConnectPage("token-exchange-failed");
+  }
+
+  if (!session) {
+    const pending = await buildPendingInstallCookie({ shop, accessToken, scope: grantedScope });
+    const response = NextResponse.redirect(`${origin}/login?installed=shopify`);
+    response.cookies.set(pending.name, pending.value, pending.options);
+    return response;
   }
 
   try {
