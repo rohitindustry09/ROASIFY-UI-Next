@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyShopifyHmac, isValidShopDomain } from "@/lib/shopifyHmac";
-import { buildShopifyAuthorizeUrl } from "@/lib/shopifyOAuth";
+import { buildShopifyAuthorizeUrl, signShopifyState } from "@/lib/shopifyOAuth";
 
 // This is the route to set as your app's "App URL" in the Shopify Partner
 // Dashboard. When a merchant installs your app from inside their own
@@ -29,5 +29,6 @@ export async function GET(request) {
     return NextResponse.redirect(`${origin}/dashboard/connections/shopify?error=invalid-request`);
   }
 
-  return NextResponse.redirect(buildShopifyAuthorizeUrl(shop, site));
+  const state = await signShopifyState({ shop });
+  return NextResponse.redirect(buildShopifyAuthorizeUrl(shop, site, state));
 }

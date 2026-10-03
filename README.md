@@ -4,16 +4,13 @@ Passwordless login (email + one-time code) with a signed cookie session — no
 external auth provider required yet — plus a dashboard shell for connecting
 Shopify, Meta Ads, and Google Ads.
 
-**Current auth is a local dev stand-in, not production-ready as-is:**
-the OTP code is generated and stored in an in-memory `Map` (`lib/otpStore.js`)
-that resets on every server restart and won't work across multiple server
-instances, and there's no real email sender wired up — the code is logged to
-the server console and, outside production, returned directly in the API
-response so the login screen can show it in a "dev mode" banner. Swap in a
-real email provider (Resend, Postmark, etc.) and a shared store (Redis,
-Postgres) before this goes live with real users. Google sign-in is present
-in the UI but disabled — it needs a registered OAuth app and either
-Supabase Auth or a library like Auth.js before it does anything.
+**Auth:** the one-time code is generated with a CSPRNG, stored only as a
+keyed hash in the `otp_challenges` table (`supabase/003_otp_challenges.sql`),
+expires after 10 minutes, is single-use, and is burned after 5 wrong guesses.
+Sends are limited to one per minute and five per hour per email. In
+production a failed email send returns an error; outside production the code
+is returned in the API response so local dev works without SMTP. Google
+sign-in is present in the UI but disabled.
 
 ## What's here
 
@@ -22,7 +19,7 @@ Supabase Auth or a library like Auth.js before it does anything.
   creates the session the same way, which is standard for passwordless auth.
 - `lib/session.js` — signs and verifies the session cookie with Web Crypto
   (works in both middleware's Edge runtime and normal route handlers).
-- `lib/otpStore.js` — the in-memory OTP store described above.
+- `lib/otpStore.js` — Supabase-backed OTP challenges (hashing, expiry, attempt and send limits).
 - `app/api/auth/otp`, `.../otp/verify`, `.../logout` — the three auth routes.
 - `middleware.js` — reads the session cookie on every request and redirects
   signed-out users away from `/dashboard`, and signed-in users away from `/login`.
@@ -66,12 +63,14 @@ per platform actually persist across page loads and devices.
 
 1. Create a project at supabase.com (free tier is fine).
 2. Open the SQL Editor and run `supabase/schema.sql` from this repo, then
-   also run `supabase/002_meta_credentials.sql` (needed for users to save
+   also run `supabase/002_meta_credentials.sql` and `supabase/003_otp_challenges.sql` (needed for users to save
    their own Meta Business credentials — see "Connecting platforms" below).
 3. Settings -> API -> copy the Project URL and the **service_role** key
    (not the anon/public key) into `.env.local` as `SUPABASE_URL` and
    `SUPABASE_SERVICE_ROLE_KEY`.
-4. Generate `ENCRYPTION_KEY` with `openssl rand -base64 32` and add it too.
+4. Generate `ENCRYPTION_KEY` with `openssl rand -base64 32` and add it too
+   (at least 32 characters is enforced). To rotate, put the new key in
+   `ENCRYPTION_KEY` and the old one in `ENCRYPTION_KEY_PREVIOUS`.
 
 **Why the service role key and not the anon key:** the service role key
 bypasses Row Level Security entirely, which is intentional here — this app
@@ -157,3 +156,11 @@ job before this handles meaningful traffic.
 Dark ink background with a monospace accent for numbers — leans into the
 "ledger" feel of a performance-marketing tool, distinct from a generic
 light SaaS dashboard. Colors and type scale live in `tailwind.config.js`.
+
+## Development
+
+```bash
+npm test      # vitest unit tests (tokens, sessions, OAuth state, OTP rules)
+npm run lint
+npm run build
+```

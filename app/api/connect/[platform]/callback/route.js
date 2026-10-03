@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { addConnection } from "@/lib/connections";
 import { verifyShopifyHmac, isValidShopDomain } from "@/lib/shopifyHmac";
-import { verifyToken } from "@/lib/crypto";
+import { verifyShopifyState, verifyGoogleState } from "@/lib/shopifyOAuth";
 import { exchangeGoogleCode } from "@/lib/googleAdsOAuth";
 import { listAccessibleCustomers } from "@/lib/googleAdsApi";
 
@@ -41,8 +41,7 @@ async function handleGoogleCallback({ searchParams, origin, code, session }) {
     NextResponse.redirect(`${origin}/dashboard/connections/google?error=${error}`);
 
   const state = searchParams.get("state");
-  const stateData = await verifyToken(state);
-  if (!stateData || stateData.email !== session.email || Date.now() > stateData.exp) {
+  if (!(await verifyGoogleState(state, session.email))) {
     return backToConnectPage("invalid-request");
   }
 
@@ -104,6 +103,12 @@ async function handleShopifyCallback({ searchParams, origin, code, session }) {
 
   if (!shop || !isValidShopDomain(shop)) {
     return backToConnectPage("missing-shop");
+  }
+
+  // Ties this callback to a flow Roasify started (CSRF protection): the
+  // state must be one we signed, for this shop, and for this signed-in user.
+  if (!(await verifyShopifyState(searchParams.get("state"), { shop, email: session.email }))) {
+    return backToConnectPage("invalid-request");
   }
 
   // Confirms this callback genuinely came from Shopify, not a forged

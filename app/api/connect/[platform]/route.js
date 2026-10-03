@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { buildShopifyAuthorizeUrl } from "@/lib/shopifyOAuth";
+import { buildShopifyAuthorizeUrl, signShopifyState, signGoogleState } from "@/lib/shopifyOAuth";
+import { isValidShopDomain } from "@/lib/shopifyHmac";
 import { buildGoogleAuthorizeUrl } from "@/lib/googleAdsOAuth";
 import { getSession } from "@/lib/session";
-import { signToken } from "@/lib/crypto";
 
 // This route performs the actual OAuth redirect for Shopify and Google.
 // Meta no longer uses this path -- it switched to a System User + Business
@@ -49,13 +49,19 @@ export async function GET(request, { params }) {
     const shopInput = searchParams.get("shop")?.trim();
     if (!shopInput) return backToConnectPage("missing-shop");
     const shop = shopInput.includes(".") ? shopInput : `${shopInput}.myshopify.com`;
-    return NextResponse.redirect(buildShopifyAuthorizeUrl(shop, site));
+    // Reject anything that isn't a real *.myshopify.com host -- otherwise this
+    // route is an open redirect to an attacker-chosen domain.
+    if (!isValidShopDomain(shop)) return backToConnectPage("missing-shop");
+    const session = await getSession();
+    if (!session) return NextResponse.redirect(`${origin}/login`);
+    const state = await signShopifyState({ shop, email: session.email });
+    return NextResponse.redirect(buildShopifyAuthorizeUrl(shop, site, state));
   }
 
   if (platform === "google") {
     const session = await getSession();
     if (!session) return NextResponse.redirect(`${origin}/login`);
-    const state = await signToken({ email: session.email, exp: Date.now() + 10 * 60 * 1000 });
+    const state = await signGoogleState(session.email);
     return NextResponse.redirect(buildGoogleAuthorizeUrl(site, state));
   }
 }

@@ -1,38 +1,50 @@
 import { NextResponse } from "next/server";
-import { buildOtpChallengeCookie } from "@/lib/otpChallenge";
+import { normalizeEmail } from "@/lib/crypto";
+import { generateCode, createChallenge, discardChallenge } from "@/lib/otpStore";
 import { sendOtpEmail } from "@/lib/mailer";
 
-function generateCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
 
 export async function POST(request) {
-  const { email } = await request.json();
+  const body = await request.json().catch(() => null);
+  const email = normalizeEmail(body?.email);
 
-  if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+  if (!email || email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email)) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
 
+  const isProd = process.env.NODE_ENV === "production";
   const code = generateCode();
-  const { name, value, options } = await buildOtpChallengeCookie(email, code);
 
-  let emailSent = true;
-  let devCode;
+  let challenge;
   try {
-    await sendOtpEmail(email, code);
+    challenge = await createChallenge(email, code);
   } catch (err) {
-    console.error(`[otp] Failed to send email to ${email}:`, err.message);
-    console.log(`[dev] OTP for ${email}: ${code}`);
-    emailSent = false;
-    // Fall back to showing the code in the UI so local dev isn't blocked
-    // by a missing/broken email sender. Never do this in production.
-    devCode = process.env.NODE_ENV !== "production" ? code : undefined;
+    console.error("[otp] failed to store challenge:", err.message);
+    return NextResponse.json({ error: "Couldn't send a code right now. Try again." }, { status: 500 });
   }
 
-  const response = NextResponse.json({ ok: true, emailSent, devCode });
-  // The code itself lives only in this signed, httpOnly cookie — never in
-  // server memory — so verification works the same on a single dev server
-  // as it does across Vercel's serverless instances.
-  response.cookies.set(name, value, options);
-  return response;
+  if (!challenge.ok) {
+    return NextResponse.json(
+      { error: "Too many codes requested. Please wait before trying again.", retryAfterSec: challenge.retryAfterSec },
+      { status: 429, headers: { "Retry-After": String(challenge.retryAfterSec) } }
+    );
+  }
+
+  try {
+    await sendOtpEmail(email, code);
+    return NextResponse.json({ ok: true, emailSent: true });
+  } catch (err) {
+    console.error("[otp] failed to send email:", err.message);
+    if (isProd) {
+      // Don't pretend it worked: drop the challenge (so the failed send
+      // doesn't eat the user's resend budget) and report the failure.
+      await discardChallenge(email).catch(() => {});
+      return NextResponse.json({ error: "We couldn't send the email. Try again shortly." }, { status: 502 });
+    }
+    // Dev only: surface the code so a missing email setup doesn't block local work.
+    console.log(`[dev] OTP for ${email}: ${code}`);
+    return NextResponse.json({ ok: true, emailSent: false, devCode: code });
+  }
 }
