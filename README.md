@@ -63,7 +63,7 @@ per platform actually persist across page loads and devices.
 
 1. Create a project at supabase.com (free tier is fine).
 2. Open the SQL Editor and run `supabase/schema.sql` from this repo, then
-   also run `supabase/002_meta_credentials.sql` and `supabase/003_otp_challenges.sql` (needed for users to save
+   also run `supabase/002_meta_credentials.sql` and `supabase/003_otp_challenges.sql` and `supabase/004_shopify_app_credentials.sql` (needed for users to save
    their own Meta Business credentials — see "Connecting platforms" below).
 3. Settings -> API -> copy the Project URL and the **service_role** key
    (not the anon/public key) into `.env.local` as `SUPABASE_URL` and

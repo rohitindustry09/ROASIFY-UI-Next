@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession, clearSessionCookie } from "@/lib/session";
 import { removeAllConnectionsForUser } from "@/lib/connections";
+import { deleteShopifyAppCredentials } from "@/lib/shopifyAppCredentials";
 import { deleteMetaCredentials } from "@/lib/metaCredentials";
 import { discardChallenge } from "@/lib/otpStore";
 
@@ -11,6 +12,7 @@ export async function POST() {
   try {
     await removeAllConnectionsForUser(session.email);
     await deleteMetaCredentials(session.email);
+    await deleteShopifyAppCredentials(session.email);
     await discardChallenge(session.email);
   } catch (err) {
     console.error("[account delete] failed to remove connections:", err.message);

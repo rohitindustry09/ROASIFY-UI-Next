@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { addConnection } from "@/lib/connections";
 import { verifyShopifyHmac, isValidShopDomain } from "@/lib/shopifyHmac";
 import { verifyShopifyState, verifyGoogleState } from "@/lib/shopifyOAuth";
+import { getShopifyAppCredentials, deleteShopifyAppCredentials } from "@/lib/shopifyAppCredentials";
 import { buildPendingInstallCookie } from "@/lib/pendingInstall";
 import { exchangeGoogleCode } from "@/lib/googleAdsOAuth";
 import { listAccessibleCustomers } from "@/lib/googleAdsApi";
@@ -117,7 +118,21 @@ async function handleShopifyCallback({ searchParams, origin, code, session }) {
 
   // Confirms this callback genuinely came from Shopify, not a forged
   // request hitting this URL directly with someone else's shop/code.
-  const verified = await verifyShopifyHmac(searchParams);
+  // A store that brought its own Shopify app uses that app's credentials;
+  // everyone else uses the shared Roasify app from the environment.
+  let custom = null;
+  if (session) {
+    try {
+      custom = await getShopifyAppCredentials(session.email, shop);
+    } catch (err) {
+      console.error("[shopify callback] couldn't load custom app credentials:", err.message);
+      return backToConnectPage("token-exchange-failed");
+    }
+  }
+  const clientId = custom?.clientId ?? process.env.SHOPIFY_API_KEY;
+  const clientSecret = custom?.clientSecret ?? process.env.SHOPIFY_API_SECRET;
+
+  const verified = await verifyShopifyHmac(searchParams, clientSecret);
   if (!verified) {
     return backToConnectPage("invalid-request");
   }
@@ -129,8 +144,8 @@ async function handleShopifyCallback({ searchParams, origin, code, session }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        client_id: process.env.SHOPIFY_API_KEY,
-        client_secret: process.env.SHOPIFY_API_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
         code,
       }),
     });
@@ -171,6 +186,13 @@ async function handleShopifyCallback({ searchParams, origin, code, session }) {
   } catch (err) {
     console.error("[shopify callback] failed to save connection:", err.message);
     return backToConnectPage("save-failed");
+  }
+
+  if (custom) {
+    // The secret was only needed to finish this install; don't keep it.
+    await deleteShopifyAppCredentials(session.email, shop).catch((err) =>
+      console.error("[shopify callback] couldn't clear custom app credentials:", err.message)
+    );
   }
 
   return NextResponse.redirect(`${origin}/dashboard/connections?connected=shopify`);

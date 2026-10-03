@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getPlatform } from "@/lib/platforms";
 import ErrorAlertBadge from "@/components/ErrorAlertBadge";
 import MetaClaimFlow from "@/components/MetaClaimFlow";
+import ShopifyOwnAppForm from "@/components/ShopifyOwnAppForm";
 
 const ENV_VAR_HINTS = {
   shopify: "SHOPIFY_API_KEY / SHOPIFY_API_SECRET",
@@ -96,6 +97,8 @@ export default function ConnectPlatformPage({ params, searchParams }) {
             Continue to {platform.name}
           </button>
         </form>
+
+        {platform.key === "shopify" && <ShopifyOwnAppForm />}
       </div>
     </div>
   );
