@@ -3,6 +3,7 @@ import { getPlatform } from "@/lib/platforms";
 import ErrorAlertBadge from "@/components/ErrorAlertBadge";
 import MetaClaimFlow from "@/components/MetaClaimFlow";
 import ShopifyOwnAppForm from "@/components/ShopifyOwnAppForm";
+import { Fragment } from "react";
 
 const ENV_VAR_HINTS = {
   shopify: "SHOPIFY_API_KEY / SHOPIFY_API_SECRET",
@@ -29,6 +30,9 @@ function getErrorCopy(errorCode, platform) {
 export default function ConnectPlatformPage({ params, searchParams }) {
   const platform = getPlatform(params.platform);
   if (!platform) notFound();
+  // Shopify can also be connected with the store owner's own app; that component
+  // swaps this standard form for its own, so only one is ever shown.
+  const Wrapper = platform.key === "shopify" ? ShopifyOwnAppForm : Fragment;
 
   const error = searchParams?.error ? getErrorCopy(searchParams.error, platform) : null;
 
@@ -57,6 +61,7 @@ export default function ConnectPlatformPage({ params, searchParams }) {
           that account directly — Roasify never sees your {platform.name} password.
         </p>
 
+        <Wrapper>
         {platform.needsShopDomain && (
           <p className="mb-5 rounded-xl border border-line bg-[#FAFAFB] px-4 py-3 text-[12.5px] leading-relaxed text-text-dim">
             Prefer not to type your domain? Open your Shopify admin directly and install Roasify
@@ -97,8 +102,8 @@ export default function ConnectPlatformPage({ params, searchParams }) {
             Continue to {platform.name}
           </button>
         </form>
+        </Wrapper>
 
-        {platform.key === "shopify" && <ShopifyOwnAppForm />}
       </div>
     </div>
   );

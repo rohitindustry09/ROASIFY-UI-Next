@@ -10,7 +10,7 @@ const LABEL_CLASS = "mb-1.5 block text-[12.5px] font-semibold text-navy";
 // Optional path for stores that can't install the shared Roasify app (e.g.
 // not a development store): the owner creates their own Shopify app and
 // pastes its Client ID + secret here, once per store.
-export default function ShopifyOwnAppForm() {
+export default function ShopifyOwnAppForm({ children }) {
   const [site, setSite] = useState("");
   useEffect(() => setSite(window.location.origin), []);
   const [open, setOpen] = useState(false);
@@ -45,20 +45,24 @@ export default function ShopifyOwnAppForm() {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-4 w-full text-center text-[12.5px] font-semibold text-[#566CBD] hover:underline"
-      >
-        Not a development store? Connect with your own Shopify app
-      </button>
+      <>
+        {children}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-4 w-full text-center text-[12.5px] font-semibold text-[#566CBD] hover:underline"
+        >
+          Not a development store? Connect with your own Shopify app
+        </button>
+      </>
     );
   }
 
   return (
+    <>
     <form
       onSubmit={handleSubmit}
-      className="mt-4 rounded-2xl border border-line bg-card p-6 shadow-[0_1px_2px_rgba(20,30,80,.03)]"
+      className="rounded-2xl border border-line bg-card p-6 shadow-[0_1px_2px_rgba(20,30,80,.03)]"
     >
       <h2 className="mb-1 font-display text-[16px] font-bold text-navy">Use your own Shopify app</h2>
       <p className="mb-4 text-[12.5px] leading-relaxed text-text-dim">
@@ -120,5 +124,13 @@ export default function ShopifyOwnAppForm() {
         {loading ? "Redirecting to Shopify…" : "Continue to Shopify"}
       </button>
     </form>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="mt-4 w-full text-center text-[12.5px] font-semibold text-[#566CBD] hover:underline"
+      >
+        Back to the standard connection
+      </button>
+    </>
   );
 }
