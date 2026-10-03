@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { getMetaCredentials } from "@/lib/metaCredentials";
-import { listClientAdAccounts } from "@/lib/metaSystemUser";
+import { listClientAdAccounts, describeMetaError } from "@/lib/metaSystemUser";
 import { listConnections } from "@/lib/connections";
 
 export async function GET() {
@@ -32,7 +32,7 @@ export async function GET() {
   } catch (err) {
     console.error("[meta available-accounts] failed:", err.message);
     return NextResponse.json(
-      { error: "Couldn't reach Meta with your saved credentials. Double-check your Business ID and token." },
+      { error: describeMetaError(err) },
       { status: 502 }
     );
   }

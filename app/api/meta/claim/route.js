@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { getMetaCredentials } from "@/lib/metaCredentials";
-import { listClientAdAccounts } from "@/lib/metaSystemUser";
+import { listClientAdAccounts, describeMetaError } from "@/lib/metaSystemUser";
 import { listConnections, addConnection } from "@/lib/connections";
 
 export async function POST(request) {
@@ -27,7 +27,7 @@ export async function POST(request) {
     ]);
   } catch (err) {
     console.error("[meta claim] verification fetch failed:", err.message);
-    return NextResponse.json({ error: "Couldn't verify that account with Meta. Try again." }, { status: 502 });
+    return NextResponse.json({ error: describeMetaError(err) }, { status: 502 });
   }
 
   const account = shared.find((a) => a.id === accountId);
