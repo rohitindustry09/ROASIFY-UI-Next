@@ -19,6 +19,7 @@ export default function LiveSourcePanel({ platform, label, connections, onFile }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [failures, setFailures] = useState([]);
+  const [details, setDetails] = useState([]);
 
   if (connections.length === 0) {
     return (
@@ -43,6 +44,7 @@ export default function LiveSourcePanel({ platform, label, connections, onFile }
   async function handleFetch() {
     setError(null);
     setFailures([]);
+    setDetails([]);
     setBusy(true);
     try {
       const res = await fetch(`/api/live/${platform}`, {
@@ -55,6 +57,7 @@ export default function LiveSourcePanel({ platform, label, connections, onFile }
 
       const failed = data.accounts.filter((a) => !a.ok);
       setFailures(failed);
+      setDetails(data.accounts.filter((a) => a.ok && a.detail));
       if (data.rows.length === 0) {
         throw new Error(
           failed.length === data.accounts.length
@@ -144,6 +147,11 @@ export default function LiveSourcePanel({ platform, label, connections, onFile }
       </div>
 
       {error && <p className="mt-2.5 rounded-lg bg-red-bg px-2.5 py-1.5 text-[11.5px] text-red">{error}</p>}
+      {details.map((d) => (
+        <p key={d.id} className="mt-1.5 text-[11px] text-text-dim">
+          {d.label}: {d.detail}
+        </p>
+      ))}
       {failures.map((f) => (
         <p key={f.id} className="mt-1.5 text-[11px] text-red">
           {f.label}: {f.error}

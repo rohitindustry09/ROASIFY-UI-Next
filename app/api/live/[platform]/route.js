@@ -20,19 +20,21 @@ const MAX_ACCOUNTS = 20;
 const FETCHERS = {
   async shopify(connection, range) {
     const { orders, truncated, currency } = await fetchShopifyLineItems(connection.label, connection.accessToken, range.since);
-    return { rows: shopifyOrdersToRows(orders), currency, note: truncated ? "partial" : null };
+    return { rows: shopifyOrdersToRows(orders), currency, note: truncated ? "partial" : null, detail: `${orders.length} orders found in this period` };
   },
   async meta(connection, range) {
     const accountId = connection.meta?.adAccountId;
     if (!accountId) throw new Error("This connection has no ad account id.");
     const { rows, currency } = await fetchMetaProductInsights(accountId, connection.accessToken, range);
-    return { rows: metaInsightsToRows(rows, range.month), currency, note: null };
+    const mapped = metaInsightsToRows(rows, range.month);
+    return { rows: mapped, currency, note: null, detail: `Meta returned ${rows.length} product rows (${mapped.length} usable). Product-level data needs catalog / dynamic product ads.` };
   },
   async google(connection, range) {
     const customerId = connection.meta?.customerId;
     if (!customerId || !connection.refreshToken) throw new Error("This connection needs to be reconnected.");
     const results = await fetchGoogleProductPerformance(connection.refreshToken, customerId, range);
-    return { rows: googleResultsToRows(results, range.month), currency: null, note: null };
+    const mapped = googleResultsToRows(results, range.month);
+    return { rows: mapped, currency: null, note: null, detail: `Google returned ${results.length} product rows (${mapped.length} usable). Product-level data needs Shopping campaigns.` };
   },
 };
 
@@ -63,15 +65,17 @@ export async function POST(request, { params }) {
   const range = dateRange(days);
   const settled = await Promise.all(
     ids.map(async (id) => {
+      let label = id;
       try {
         // Scoped to the signed-in user, so another user's connection id just 404s.
         const connection = await getConnectionTokens(id, session.email);
+        label = connection.label;
         if (connection.platform !== params.platform) throw new Error("Wrong platform.");
         const result = await fetcher(connection, range);
-        return { id, label: connection.label, ok: true, ...result };
+        return { id, label, ok: true, ...result };
       } catch (err) {
         console.error(`[live ${params.platform}] ${id} failed:`, err.message);
-        return { id, ok: false, error: friendlyError(params.platform, err) };
+        return { id, label, ok: false, error: friendlyError(params.platform, err) };
       }
     })
   );
@@ -82,6 +86,6 @@ export async function POST(request, { params }) {
     rows: succeeded.flatMap((s) => s.rows),
     currencies: [...new Set(succeeded.map((s) => s.currency).filter(Boolean))],
     partial: succeeded.some((s) => s.note === "partial"),
-    accounts: settled.map(({ id, label, ok, error, rows }) => ({ id, label, ok, error, rowCount: rows?.length })),
+    accounts: settled.map(({ id, label, ok, error, rows, detail }) => ({ id, label, ok, error, detail, rowCount: rows?.length })),
   });
 }
