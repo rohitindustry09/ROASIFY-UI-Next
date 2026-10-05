@@ -19,9 +19,9 @@ export default async function ConnectionsPage({ searchParams }) {
     <div className="stagger max-w-2xl">
       <h1 className="mb-1 font-display text-[22px] font-bold text-navy">Connections</h1>
       <p className="mb-6 text-[13.5px] text-text-dim">
-        Roasify pulls fresh data from each platform on a schedule and stores it in
-        your own account — nothing is read live on every page load. You can connect
-        more than one store or ad account per platform.
+        Roasify reads your connected accounts live when you open a page; you can connect
+        more than one store or ad account per platform. Choose which to include on the
+        Overview.
       </p>
 
       {justConnected && (
