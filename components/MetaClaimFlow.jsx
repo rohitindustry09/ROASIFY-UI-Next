@@ -65,9 +65,9 @@ function CredentialsForm({ onSaved }) {
       <div className="rounded-2xl border border-line bg-card p-6 shadow-[0_1px_2px_rgba(20,30,80,.03)]">
         <h2 className="mb-2 text-[13.5px] font-bold text-navy">Where to find these</h2>
         <ol className="mb-5 list-decimal space-y-1.5 pl-4 text-[12.5px] leading-relaxed text-navy/80">
-          <li>Your Business ID is in Meta Business Settings → Business Info</li>
+          <li>Your Business ID is in Meta Business Settings → Business Info (not your App ID from developers.facebook.com — they are different numbers)</li>
           <li>Create a System User: Business Settings → Users → System Users → Add</li>
-          <li>Assign your app to it, then generate a token with <code>ads_read</code> scope — choose "Never" for expiration if offered</li>
+          <li>Assign your app to it, then generate a token with <code>ads_read</code> and <code>business_management</code> scopes — choose "Never" for expiration if offered</li>
         </ol>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
