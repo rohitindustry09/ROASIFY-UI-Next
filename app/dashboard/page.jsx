@@ -1,11 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useData } from "@/state/DataContext";
 import { fmtINR, fmtROI } from "@/lib/format";
 
 export default function DashboardOverview() {
   const { merged, loaded } = useData();
+  const [hasConnections, setHasConnections] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/connections")
+      .then((res) => (res.ok ? res.json() : { connections: [] }))
+      .then((data) => setHasConnections(data.connections.length > 0))
+      .catch(() => setHasConnections(false));
+  }, []);
 
   if (!loaded) return null;
 
@@ -15,22 +24,22 @@ export default function DashboardOverview() {
         <div className="max-w-md rounded-2xl border border-line bg-card p-10 shadow-[0_1px_2px_rgba(20,30,80,.03)]">
           <h1 className="mb-1 font-display text-[22px] font-bold text-navy">No data yet</h1>
           <p className="mb-6 text-[13.5px] leading-relaxed text-text-dim">
-            Open Upload & merge, add Meta and Shopify (by file or from your connected accounts) to see product-level
-            ROAS here. Google Ads is optional.
-
+            {hasConnections
+              ? "Your accounts are connected, but nothing has been analysed yet. Open Upload & merge, choose \"Use connected accounts\" on the Meta and Shopify cards (Google Ads is optional), fetch the data, then click Merge & Analyse."
+              : "Connect Meta and Shopify (Google Ads is optional) or upload your exports, then merge them on the Upload & merge page to see product-level ROAS here."}
           </p>
           <div className="flex justify-center gap-3">
             <Link
-              href="/dashboard/connections"
+              href={hasConnections ? "/dashboard/upload" : "/dashboard/connections"}
               className="rounded-full bg-lime px-5 py-2.5 text-[13px] font-extrabold text-navy hover:bg-lime-dark hover:shadow-[0_4px_14px_-4px_rgba(207,224,94,.7)]"
             >
-              Connect a platform
+              {hasConnections ? "Open Upload & merge" : "Connect a platform"}
             </Link>
             <Link
-              href="/dashboard/upload"
+              href={hasConnections ? "/dashboard/connections" : "/dashboard/upload"}
               className="rounded-full border border-line bg-white px-5 py-2.5 text-[13px] font-semibold text-navy hover:border-[#c9cee6] hover:shadow-[0_2px_8px_rgba(20,30,80,.06)]"
             >
-              Open Upload & merge
+              {hasConnections ? "Manage connections" : "Upload files instead"}
             </Link>
           </div>
         </div>
