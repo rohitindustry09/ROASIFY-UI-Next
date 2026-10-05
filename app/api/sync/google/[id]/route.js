@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { getConnectionTokens } from "@/lib/connections";
-import { fetchGoogleAdsOverview } from "@/lib/googleAdsApi";
+import { fetchGoogleAdsOverview, describeGoogleAdsError } from "@/lib/googleAdsApi";
 
 export async function GET(request, { params }) {
   const session = await getSession();
@@ -33,7 +33,7 @@ export async function GET(request, { params }) {
   } catch (err) {
     console.error("[sync/google] fetch failed:", err.message);
     return NextResponse.json(
-      { error: "Couldn't fetch data from Google Ads. The token may have expired, or your developer token may not have Basic access yet." },
+      { error: describeGoogleAdsError(err) },
       { status: 502 }
     );
   }
