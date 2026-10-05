@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useData } from "@/state/DataContext";
 import UploadCard from "@/components/UploadCard";
@@ -10,6 +10,18 @@ import { fmtINR, fmtROI, fmtNum } from "@/lib/format";
 export default function UploadPage() {
   const { sources, setFile, clearFile, merged, runMergeNow, canMerge } = useData();
   const [search, setSearch] = useState("");
+  // null until loaded, so the live option appears only once we know what is connected
+  const [connections, setConnections] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/connections")
+      .then((res) => (res.ok ? res.json() : { connections: [] }))
+      .then((data) => setConnections(data.connections))
+      .catch(() => setConnections([]));
+  }, []);
+
+  const liveFor = (platform) =>
+    connections ? connections.filter((c) => c.platform === platform && c.status === "connected") : undefined;
 
   const rows = useMemo(() => {
     if (!merged) return [];
@@ -23,9 +35,10 @@ export default function UploadPage() {
     <div className="stagger max-w-[1100px]">
       <h1 className="mb-1 font-display text-[22px] font-bold text-navy">Upload &amp; merge</h1>
       <p className="mb-6 text-[13.5px] text-text-dim">
-        Merge Meta Ads, Shopify, and Google Ads exports into one product-level table —
-        entirely in your browser. Files are stored locally so you don't need to
-        re-upload after a refresh.
+        Merge Meta Ads, Shopify, and Google Ads data into one product-level table. Upload
+        your exports, or pull the same data live from your connected accounts for each
+        source. Everything is processed in your browser and stored locally, so you
+        don't need to reload after a refresh.
       </p>
 
       <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -38,6 +51,7 @@ export default function UploadPage() {
           file={sources.meta}
           onFile={(f) => setFile("meta", f)}
           onClear={() => clearFile("meta")}
+          liveConnections={liveFor("meta")}
         />
         <UploadCard
           source="shopify"
@@ -48,6 +62,7 @@ export default function UploadPage() {
           file={sources.shopify}
           onFile={(f) => setFile("shopify", f)}
           onClear={() => clearFile("shopify")}
+          liveConnections={liveFor("shopify")}
         />
         <UploadCard
           source="google"
@@ -57,13 +72,14 @@ export default function UploadPage() {
           file={sources.google}
           onFile={(f) => setFile("google", f)}
           onClear={() => clearFile("google")}
+          liveConnections={liveFor("google")}
         />
       </div>
 
       <div className="mb-6 flex items-center justify-between rounded-[18px] border border-line bg-card px-[18px] py-3.5">
         <span className="text-[13px] text-navy">
           <b className="font-bold">
-            {[sources.meta, sources.shopify, sources.google].filter(Boolean).length} files
+            {[sources.meta, sources.shopify, sources.google].filter(Boolean).length} sources
           </b>{" "}
           loaded — {canMerge ? "ready to merge" : "Meta + Shopify required"}
         </span>
@@ -80,7 +96,7 @@ export default function UploadPage() {
         <div className="animate-fadeSlideUp">
           <div className="mb-6 flex items-center justify-between rounded-2xl border border-[#BBF7D0] bg-[#F0FDF4] px-[18px] py-3">
             <span className="text-[13px] text-[#166534]">
-              Merged {merged.totals.products} products across your uploaded files.
+              Merged {merged.totals.products} products across your sources.
             </span>
             <Link href="/dashboard/quadrant-view" className="text-[13px] font-semibold text-[#166534] underline">
               View quadrant breakdown →

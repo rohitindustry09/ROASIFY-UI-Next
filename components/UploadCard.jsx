@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { findHeaderRow, gridToObjects, normalizeHeader } from "@/lib/fileParse";
 import { requiredFragmentsFor } from "@/lib/merge";
 import { fmtBytes } from "@/lib/format";
+import LiveSourcePanel from "@/components/LiveSourcePanel";
 
 const BANNER = {
   meta: "linear-gradient(120deg,#E1EBF5 0%,#ECDBEB 60%,#FFFFFF 100%)",
@@ -26,7 +27,7 @@ async function readFileAsGrid(file) {
   return result.data;
 }
 
-export default function UploadCard({ source, label, required, fields, icon, file, onFile, onClear }) {
+export default function UploadCard({ source, label, required, fields, icon, file, onFile, onClear, liveConnections }) {
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -91,6 +92,7 @@ export default function UploadCard({ source, label, required, fields, icon, file
       </div>
 
       {!file ? (
+        <>
         <div
           onClick={() => !busy && inputRef.current?.click()}
           onDragOver={(e) => {
@@ -116,6 +118,15 @@ export default function UploadCard({ source, label, required, fields, icon, file
             onChange={handleInputChange}
           />
         </div>
+        {liveConnections && (
+          <LiveSourcePanel
+            platform={source}
+            label={label}
+            connections={liveConnections}
+            onFile={onFile}
+          />
+        )}
+        </>
       ) : (
         <div className="mx-4 mb-4 flex animate-fadeSlideUp items-center justify-between rounded-[14px] border border-[#CDEAB9] bg-[#F7FDF3] px-3.5 py-2.5">
           <div className="flex min-w-0 items-center gap-2">
@@ -125,8 +136,11 @@ export default function UploadCard({ source, label, required, fields, icon, file
             <div className="min-w-0">
               <div className="truncate text-[12.5px] font-semibold text-navy">{file.name}</div>
               <div className="text-[10.5px] text-text-dim">
-                {fmtBytes(file.size)} · {file.rowCount.toLocaleString("en-IN")} rows — stored, no re-upload needed
+                {file.live
+                  ? `${file.rowCount.toLocaleString("en-IN")} product rows from your connected accounts`
+                  : `${fmtBytes(file.size)} · ${file.rowCount.toLocaleString("en-IN")} rows — stored, no re-upload needed`}
               </div>
+              {file.note && <div className="mt-0.5 text-[10.5px] text-text-dim">{file.note}</div>}
             </div>
           </div>
           <button

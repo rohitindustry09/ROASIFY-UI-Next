@@ -46,7 +46,14 @@ export function DataProvider({ children }) {
     for (const key of ["meta", "shopify", "google"]) {
       const s = next[key];
       toSave[key] = s
-        ? { name: s.name, size: s.size, rowCount: s.rowCount, mapArray: mapToArray(s.map) }
+        ? {
+            name: s.name,
+            size: s.size,
+            rowCount: s.rowCount,
+            live: s.live,
+            note: s.note,
+            mapArray: mapToArray(s.map),
+          }
         : null;
     }
     try {
@@ -57,13 +64,13 @@ export function DataProvider({ children }) {
   }, []);
 
   const setFile = useCallback(
-    (source, { name, size, rows }) => {
+    (source, { name, size, rows, live = false, note = "" }) => {
       let map;
       if (source === "meta") map = aggregateMeta(rows);
       else if (source === "shopify") map = aggregateShopify(rows);
       else if (source === "google") map = aggregateGoogle(rows);
       rawRowsRef.current[source] = rows;
-      const entry = { name, size, rowCount: rows.length, map };
+      const entry = { name, size, rowCount: rows.length, map, live, note };
       setSources((prev) => {
         const next = { ...prev, [source]: entry };
         persist(next);

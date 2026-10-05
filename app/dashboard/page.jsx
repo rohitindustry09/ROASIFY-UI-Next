@@ -15,9 +15,9 @@ export default function DashboardOverview() {
         <div className="max-w-md rounded-2xl border border-line bg-card p-10 shadow-[0_1px_2px_rgba(20,30,80,.03)]">
           <h1 className="mb-1 font-display text-[22px] font-bold text-navy">No data yet</h1>
           <p className="mb-6 text-[13.5px] leading-relaxed text-text-dim">
-            Connect Shopify and at least one ad platform to see live product-level
-            ROAS here. Or upload exports manually if you'd rather not connect an
-            account yet.
+            Open Upload & merge, add Meta and Shopify (by file or from your connected accounts) to see product-level
+            ROAS here. Google Ads is optional.
+
           </p>
           <div className="flex justify-center gap-3">
             <Link
@@ -30,7 +30,7 @@ export default function DashboardOverview() {
               href="/dashboard/upload"
               className="rounded-full border border-line bg-white px-5 py-2.5 text-[13px] font-semibold text-navy hover:border-[#c9cee6] hover:shadow-[0_2px_8px_rgba(20,30,80,.06)]"
             >
-              Upload CSV instead
+              Open Upload & merge
             </Link>
           </div>
         </div>
@@ -44,7 +44,7 @@ export default function DashboardOverview() {
         <div>
           <h1 className="mb-1 font-display text-[22px] font-bold text-navy">Overview</h1>
           <p className="text-[13.5px] text-text-dim">
-            From your uploaded files — {merged.totals.products} products merged.
+            From your uploaded files and connected accounts — {merged.totals.products} products merged.
           </p>
         </div>
         <Link
