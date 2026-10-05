@@ -8,7 +8,7 @@ import { Fragment } from "react";
 const ENV_VAR_HINTS = {
   shopify: "SHOPIFY_API_KEY / SHOPIFY_API_SECRET",
   meta: "META_APP_ID / META_APP_SECRET",
-  google: "GOOGLE_ADS_CLIENT_ID / GOOGLE_ADS_CLIENT_SECRET (or GOOGLE_ADS_DEVELOPER_TOKEN, if the account list fetch is what failed)",
+  google: "GOOGLE_ADS_CLIENT_ID / GOOGLE_ADS_CLIENT_SECRET",
 };
 
 function getErrorCopy(errorCode, platform) {
