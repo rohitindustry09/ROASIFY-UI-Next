@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { getConnectionTokens } from "@/lib/connections";
-import { fetchShopifyLineItems } from "@/lib/shopifyApi";
+import { fetchShopifyLineItems, describeShopifyError } from "@/lib/shopifyApi";
 import { fetchMetaProductInsights, describeMetaError } from "@/lib/metaSystemUser";
 import { fetchGoogleProductPerformance, describeGoogleAdsError } from "@/lib/googleAdsApi";
 import {
@@ -41,7 +41,7 @@ const FETCHERS = {
 function friendlyError(platform, err) {
   if (platform === "meta") return describeMetaError(err);
   if (platform === "google") return describeGoogleAdsError(err);
-  return "Couldn't fetch data from Shopify. The token may have expired or been revoked.";
+  return describeShopifyError(err);
 }
 
 // Body: { ids: [connectionId, ...], days: 7 | 30 | 90 }

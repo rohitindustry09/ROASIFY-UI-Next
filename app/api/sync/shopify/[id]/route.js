@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { getConnectionTokens } from "@/lib/connections";
-import { fetchShopifyOverview } from "@/lib/shopifyApi";
+import { fetchShopifyOverview, describeShopifyError } from "@/lib/shopifyApi";
 
 export async function GET(request, { params }) {
   const session = await getSession();
@@ -23,6 +23,6 @@ export async function GET(request, { params }) {
     return NextResponse.json({ shop: connection.label, ...overview });
   } catch (err) {
     console.error("[sync/shopify] fetch failed:", err.message);
-    return NextResponse.json({ error: "Couldn't fetch data from Shopify. The token may have expired or been revoked." }, { status: 502 });
+    return NextResponse.json({ error: describeShopifyError(err) }, { status: 502 });
   }
 }
